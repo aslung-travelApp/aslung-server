@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.user.model.mapper.UserMapper">
+
+    <resultMap id="UserResultMap" type="com.trip.aslung.user.model.dto.User">
+        <id property="userId" column="user_id" />
+        <result property="email" column="email" />
+        <result property="nickname" column="nickname" />
+        <result property="profileImageUrl" column="profile_image_url" />
+        <result property="oauthProvider" column="oauth_provider" />
+        <result property="oauthId" column="oauth_id" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+        <result property="deletedAt" column="deleted_at" />
+    </resultMap>
+
+    <insert id="insertUser" parameterType="com.trip.aslung.user.model.dto.User"
+            useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO users (
+            email,
+            nickname,
+            profile_image_url,
+            oauth_provider,
+            oauth_id,
+            created_at,
+            updated_at
+        ) VALUES (
+                     #{email},
+                     #{nickname},
+                     #{profileImageUrl},
+                     #{oauthProvider},
+                     #{oauthId},
+                     NOW(),
+                     NOW()
+                 )
+    </insert>
+
+    <select id="findByEmail" parameterType="String" resultMap="UserResultMap">
+        SELECT * FROM users
+        WHERE email = #{email}
+    </select>
+
+    <select id="findByUserId" parameterType="Long" resultMap="UserResultMap">
+        SELECT * FROM users
+        WHERE user_id = #{userId}
+    </select>
+
+    <update id="updateUser" parameterType="com.trip.aslung.user.model.dto.User">
+        UPDATE users
+        SET
+            nickname = #{nickname},
+            profile_image_url = #{profileImageUrl},
+            updated_at = NOW()
+        WHERE email = #{email}
+    </update>
+
+</mapper>

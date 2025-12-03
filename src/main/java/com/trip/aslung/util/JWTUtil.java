@@ -1,0 +1,57 @@
+package com.trip.aslung.util;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.Date;
+
+@Component
+public class JWTUtil {
+    private final Key key;
+    private final long accessTokenExpTime;
+
+    public JWTUtil(
+            @Value("${jwt.key}") String secretKey,
+            @Value("${jwt.accesstoken.expiretime}") long acessTokenExpTime
+    ){
+        //byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        this.accessTokenExpTime = acessTokenExpTime;
+    }
+
+    public String createAccessToken(String email){
+        return createToken(email, accessTokenExpTime);
+    }
+
+    private String createToken(String email, long expireTime){
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis()+expireTime*1000))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+    public String getEmail(String token){
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    public boolean validateToken(String token){
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return true;
+        } catch (Exception e){
+            return false;
+        }
+    }
+}
