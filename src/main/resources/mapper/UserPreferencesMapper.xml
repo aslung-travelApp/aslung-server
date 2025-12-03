@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.user.model.mapper.UserPreferencesMapper">
+
+    <select id="existsByUserId" parameterType="Long" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM user_preferences WHERE user_id = #{userId}
+        )
+    </select>
+
+    <insert id="insertUserPreferences" parameterType="com.trip.aslung.user.model.dto.UserPreferences">
+        INSERT INTO user_preferences (
+            user_id,
+            travel_style,
+            pace,
+            interest_keywords,
+            updated_at
+        ) VALUES (
+                     #{userId},
+                     #{travelStyle},
+                     #{pace},
+                     #{interestKeywords},
+                     NOW()
+                 )
+    </insert>
+
+</mapper>
