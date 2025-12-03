@@ -21,7 +21,6 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<User> getMyInfo(@AuthenticationPrincipal String email){
         log.info("내 정보 조회 요청 : {}", email);
-
         User user = userService.getUserByEmail(email);
 
         if(user != null){
