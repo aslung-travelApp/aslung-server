@@ -26,18 +26,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String authorizationHeader = request.getHeader("Authorization");
 
-        if(authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")){
-            filterChain.doFilter(request, response);
-            return;
-        }
+        // 1. 토큰 추출
+        String token = resolveToken(request);
 
-        String token = authorizationHeader.substring(7);
-
-        if(jwtUtil.validateToken(token)){
+        // 2. 유효한 토큰이면 인증처리
+        if (token != null && jwtUtil.validateToken(token)) {
             String email = jwtUtil.getEmail(token);
-
             log.info("유효한 토큰 감지 : 사용자 이메일 = {}", email);
 
             Authentication authToken = new UsernamePasswordAuthenticationToken(
@@ -47,10 +42,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             );
 
             SecurityContextHolder.getContext().setAuthentication(authToken);
-        } else {
-            log.warn("유효하지 않은 토큰입니다.");
         }
 
+        // 3. 다음 필터로 넘김
         filterChain.doFilter(request, response);
+    }
+
+    // 토큰 추출
+    private String resolveToken(HttpServletRequest request) {
+
+        // 헤더에서 찾기
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+
+        // 쿠키에서 찾기
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                // "Authorization" 부분은 SuccessHandler에서 설정한 쿠키 이름과 똑같아야 함!
+                if ("Authorization".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        return null;
     }
 }
