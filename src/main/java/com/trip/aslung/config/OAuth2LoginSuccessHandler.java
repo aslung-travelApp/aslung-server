@@ -5,6 +5,7 @@ import com.trip.aslung.user.model.mapper.UserMapper;
 import com.trip.aslung.user.model.mapper.UserPreferencesMapper;
 import com.trip.aslung.util.JWTUtil;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +37,15 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         log.info("OAuth2 Login 성공, 사용자 : {}", email);
 
+        // 1. 액세스 토큰 생성
         String accessToken = jwtUtil.createAccessToken(email);
         log.info("⭐⭐⭐ [Postman 테스트용 토큰] : {}", accessToken);
 
-        User user = userMapper.findByEmail(email);
+        // 2. 토큰 쿠키에 담기
+        createCookie(response, "Authorization", accessToken);
 
-        // 새로운 회원이면 선호도 조사 페이지로 넘기기
+        // 3. 새로운 회원이면 선호도 조사 페이지로 넘기기
+        User user = userMapper.findByEmail(email);
         boolean hasPreferences = false;
         if(user != null){
             hasPreferences = userPreferencesMapper.existsByUserId(user.getUserId());
@@ -50,16 +54,23 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String targetUrl;
         if(hasPreferences){
             log.info("기존 회원 -> 메인 페이지 이동");
-            targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/main")
-                    .queryParam("token", accessToken)
-                    .build().toUriString();
+            targetUrl = "http://localhost:5173/main";
         } else {
             log.info("신규/미조사 회원 -> 설문조사 페이지 이동");
             targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/survey")
-                    .queryParam("token", accessToken)
                     .queryParam("new", "true")
                     .build().toUriString();
         }
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+    private void createCookie(HttpServletResponse response, String key, String value){
+        Cookie cookie = new Cookie(key, value);
+        cookie.setPath("/");
+        cookie.setHttpOnly(false);
+        cookie.setMaxAge(60*60); // 1시간(토큰 만료시간)
+        cookie.setSecure(true);
+
+        response.addCookie(cookie);
     }
 }
