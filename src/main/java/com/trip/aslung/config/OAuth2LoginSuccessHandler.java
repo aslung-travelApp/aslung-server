@@ -69,7 +69,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         cookie.setPath("/");
         cookie.setHttpOnly(false);
         cookie.setMaxAge(60*60); // 1시간(토큰 만료시간)
-        cookie.setSecure(true);
+        //cookie.setSecure(true); // 배포시 true
 
         response.addCookie(cookie);
     }
