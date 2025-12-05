@@ -32,11 +32,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. 유효한 토큰이면 인증처리
         if (token != null && jwtUtil.validateToken(token)) {
-            String email = jwtUtil.getEmail(token);
-            log.info("유효한 토큰 감지 : 사용자 이메일 = {}", email);
+            Long userId = jwtUtil.getUserId(token);
+            log.info("유효한 토큰 감지 : 사용자 ID = {}", userId);
 
             Authentication authToken = new UsernamePasswordAuthenticationToken(
-                    email,
+                    userId,
                     null,
                     Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"))
             );

@@ -4,4 +4,5 @@ import com.trip.aslung.user.model.dto.User;
 
 public interface UserService {
     User getUserByEmail(String email);
+    User findByUserId(Long userId);
 }
