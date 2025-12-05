@@ -9,6 +9,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -28,24 +29,30 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final UserMapper userMapper;
     private final UserPreferencesMapper userPreferencesMapper;
 
+    @Value("${app.front-url}")
+    private String frontUrl;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
+        // 1. 카카오 인증 정보에서 이메일 추출
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         Map<String, Object> kakaoAccount = (Map<String, Object>) oAuth2User.getAttributes().get("kakao_account");
         String email = (String) kakaoAccount.get("email");
 
         log.info("OAuth2 Login 성공, 사용자 : {}", email);
 
-        // 1. 액세스 토큰 생성
-        String accessToken = jwtUtil.createAccessToken(email);
+        // 2. DB에서 유저 조회
+        User user = userMapper.findByEmail(email);
+
+        // 3. userId로 Access Token 발급
+        String accessToken = jwtUtil.createAccessToken(user.getUserId());
         log.info("⭐⭐⭐ [Postman 테스트용 토큰] : {}", accessToken);
 
-        // 2. 토큰 쿠키에 담기
+        // 4. 토큰 쿠키에 담기
         createCookie(response, "Authorization", accessToken);
 
-        // 3. 새로운 회원이면 선호도 조사 페이지로 넘기기
-        User user = userMapper.findByEmail(email);
+        // 5. 새로운 회원이면 선호도 조사 페이지로 넘기기
         boolean hasPreferences = false;
         if(user != null){
             hasPreferences = userPreferencesMapper.existsByUserId(user.getUserId());
@@ -54,10 +61,13 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String targetUrl;
         if(hasPreferences){
             log.info("기존 회원 -> 메인 페이지 이동");
-            targetUrl = "http://localhost:5173/main";
+            targetUrl = UriComponentsBuilder.fromUriString(frontUrl)
+                    .path("/main")
+                    .build().toUriString();
         } else {
             log.info("신규/미조사 회원 -> 설문조사 페이지 이동");
-            targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/survey")
+            targetUrl = UriComponentsBuilder.fromUriString(frontUrl)
+                    .path("/survey")
                     .queryParam("new", "true")
                     .build().toUriString();
         }

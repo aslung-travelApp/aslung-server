@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,10 +20,10 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    public ResponseEntity<User> getMyInfo(@AuthenticationPrincipal String email){
-        log.info("내 정보 조회 요청 : {}", email);
+    public ResponseEntity<User> getMyInfo(@AuthenticationPrincipal Long userId){
+        log.info("내 정보 조회 요청 : {}", userId);
 
-        User user = userService.getUserByEmail(email);
+        User user = userService.findByUserId(userId);
 
         if(user != null){
             return ResponseEntity.ok(user);

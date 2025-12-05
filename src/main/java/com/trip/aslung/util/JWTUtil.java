@@ -25,25 +25,26 @@ public class JWTUtil {
         this.accessTokenExpTime = acessTokenExpTime;
     }
 
-    public String createAccessToken(String email){
-        return createToken(email, accessTokenExpTime);
+    public String createAccessToken(Long userId){
+        return createToken(userId, accessTokenExpTime);
     }
 
-    private String createToken(String email, long expireTime){
+    private String createToken(Long userId, long expireTime){
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(String.valueOf(userId))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis()+expireTime*1000))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
-    public String getEmail(String token){
-        return Jwts.parserBuilder()
+    public Long getUserId(String token){
+        String subject = Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+        return Long.parseLong(subject);
     }
 
     public boolean validateToken(String token){
