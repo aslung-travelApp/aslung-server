@@ -53,7 +53,7 @@
             nickname = #{nickname},
             profile_image_url = #{profileImageUrl},
             updated_at = NOW()
-        WHERE email = #{email}
+        WHERE user_id = #{userId}
     </update>
 
 </mapper>

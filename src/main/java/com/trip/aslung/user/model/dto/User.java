@@ -21,4 +21,9 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+
+    public void updateProfile(String nickname, String profileImageUrl){
+        if(nickname!=null && !nickname.isBlank()) this.nickname = nickname;
+        if(profileImageUrl!=null) this.profileImageUrl = profileImageUrl;
+    }
 }
