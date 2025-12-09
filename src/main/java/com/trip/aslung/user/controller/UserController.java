@@ -1,6 +1,7 @@
 package com.trip.aslung.user.controller;
 
 import com.trip.aslung.user.model.dto.User;
+import com.trip.aslung.user.model.dto.UserStatsResponse;
 import com.trip.aslung.user.model.dto.UserUpdateRequest;
 import com.trip.aslung.user.model.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -47,4 +48,16 @@ public class UserController {
         // refresh token 구현 후 삭제 로직 필요
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<UserStatsResponse> getUserStats(
+            @AuthenticationPrincipal Long userId
+    ) {
+        log.info("통계 조회 요청 - UserID: {}", userId);
+
+        UserStatsResponse stats = userService.getUserStats(userId);
+
+        return ResponseEntity.ok(stats);
+    }
+
 }
