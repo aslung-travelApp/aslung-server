@@ -62,7 +62,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         if(hasPreferences){
             log.info("기존 회원 -> 메인 페이지 이동");
             targetUrl = UriComponentsBuilder.fromUriString(frontUrl)
-                    .path("/main")
                     .build().toUriString();
         } else {
             log.info("신규/미조사 회원 -> 설문조사 페이지 이동");
