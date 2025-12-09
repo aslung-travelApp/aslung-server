@@ -1,6 +1,7 @@
 package com.trip.aslung.user.model.service;
 
 import com.trip.aslung.user.model.dto.User;
+import com.trip.aslung.user.model.dto.UserStatsResponse;
 import com.trip.aslung.user.model.dto.UserUpdateRequest;
 import com.trip.aslung.user.model.mapper.UserMapper;
 import com.trip.aslung.util.S3Uploader;
@@ -39,5 +40,14 @@ public class UserServiceImpl implements UserService {
         user.updateProfile(request.getNickname(), profileImageUrl);
 
         userMapper.updateUser(user);
+    }
+
+    @Override
+    public UserStatsResponse getUserStats(Long userId) {
+        int tripCount = 0;
+        int reviewCount = 0;
+        int placeLikeCount = 0;
+
+        return new UserStatsResponse(tripCount, reviewCount, placeLikeCount);
     }
 }
