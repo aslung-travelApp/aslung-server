@@ -3,6 +3,7 @@ package com.trip.aslung.user.controller;
 import com.trip.aslung.user.model.dto.User;
 import com.trip.aslung.user.model.dto.UserStatsResponse;
 import com.trip.aslung.user.model.dto.UserUpdateRequest;
+import com.trip.aslung.user.model.service.UserPreferenceService;
 import com.trip.aslung.user.model.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
