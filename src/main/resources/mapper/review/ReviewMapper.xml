@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.review.model.mapper.ReviewMapper">
+
+    <insert id="insertReview" parameterType="com.trip.aslung.review.model.dto.ReviewRegistDto">
+        INSERT INTO reviews (
+            user_id,
+            post_id,
+            plan_schedule_id,
+            place_id,
+            comment,
+            rating
+        ) VALUES (
+                     #{userId},
+                     #{postId},
+                     #{planScheduleId},
+                     #{placeId},
+                     #{comment},
+                     #{rating}
+                 )
+    </insert>
+
+    <update id="updateViewCount" parameterType="long">
+        UPDATE posts
+        SET view_count = view_count + 1
+        WHERE post_id = #{postId}
+    </update>
+
+    <select id="selectReviewTargets" parameterType="long" resultType="com.trip.aslung.review.model.dto.ReviewTargetDto">
+        SELECT
+            ps.schedule_id AS planScheduleId,
+            ps.place_id AS placeId,
+            p.name AS placeName,
+            ps.day_number AS dayNumber,
+            ps.order_index AS orderIndex
+        FROM plan_schedules ps
+                 JOIN places p ON ps.place_id = p.place_id
+        WHERE ps.plan_id = #{planId}
+        ORDER BY ps.day_number, ps.order_index
+    </select>
+
+    <select id="selectPostList" resultType="com.trip.aslung.review.model.dto.PostListDto">
+        SELECT
+        p.post_id AS postId,
+        p.title,
+        LEFT(p.content, 50) AS content,
+        p.thumbnail_url AS thumbnailUrl,
+        p.region_name AS regionName,
+        p.view_count AS viewCount,
+        p.like_count AS likeCount,
+        IFNULL(AVG(r.rating), 0) AS avgRating,
+        COUNT(r.review_id) AS reviewCount
+        FROM posts p
+        LEFT JOIN reviews r ON p.post_id = r.post_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (p.title LIKE CONCAT('%', #{keyword}, '%')
+                OR p.region_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        GROUP BY p.post_id
+        ORDER BY p.created_at DESC, p.post_id DESC
+    </select>
+
+    <select id="selectHotPostList" resultType="com.trip.aslung.review.model.dto.PostListDto">
+        SELECT
+            p.post_id AS postId,
+            p.title,
+            p.thumbnail_url AS thumbnailUrl,
+            p.like_count AS likeCount,
+            IFNULL(AVG(r.rating), 0) AS avgRating,
+            COUNT(r.review_id) AS reviewCount
+        FROM posts p
+                 LEFT JOIN reviews r ON p.post_id = r.post_id
+        GROUP BY p.post_id
+        ORDER BY p.like_count DESC, p.view_count DESC
+            LIMIT 3
+    </select>
+
+    <select id="selectPostDetail" parameterType="long" resultType="com.trip.aslung.review.model.dto.PostDetailDto">
+        SELECT
+            p.post_id AS postId,
+            p.title,
+            p.content,
+            p.thumbnail_url AS thumbnailUrl,
+            p.view_count AS viewCount,
+            p.like_count AS likeCount,
+            IFNULL(u.nickname, '알수없음') AS writerNickname,
+            u.profile_image_url AS writerProfileImg,
+            p.plan_id AS planId,
+            pl.start_date AS startDate,
+            pl.end_date AS endDate,
+            (SELECT IFNULL(AVG(rating), 0) FROM reviews WHERE post_id = p.post_id) AS avgRating
+        FROM posts p
+                 LEFT JOIN users u ON p.user_id = u.user_id
+                 LEFT JOIN plans pl ON p.plan_id = pl.plan_id
+        WHERE p.post_id = #{postId}
+    </select>
+
+    <select id="selectPostSchedules" parameterType="long" resultType="com.trip.aslung.review.model.dto.PostScheduleDto">
+        SELECT
+            ps.day_number AS dayNumber,
+            ps.order_index AS orderIndex,
+            pl.name AS placeName,
+            pl.category,
+            r.comment AS memo, IFNULL(r.rating, 0) AS rating FROM plan_schedules ps
+                                                                      JOIN places pl ON ps.place_id = pl.place_id
+                                                                      LEFT JOIN reviews r ON ps.schedule_id = r.plan_schedule_id WHERE ps.plan_id = #{planId}
+        ORDER BY ps.day_number, ps.order_index
+    </select>
+
+    <select id="selectPostCommentsPreview" parameterType="long" resultType="com.trip.aslung.review.model.dto.PostCommentDto">
+        SELECT
+            c.comment_id AS commentId,
+            c.post_id AS postId,
+            c.user_id AS userId,
+            c.content,
+            DATE_FORMAT(c.created_at, '%Y-%m-%d %H:%i') AS createdAt,
+            u.nickname,
+            u.profile_image_url AS profileImg
+        FROM post_comments c
+                 JOIN users u ON c.user_id = u.user_id
+        WHERE c.post_id = #{postId}
+        ORDER BY c.created_at ASC
+            LIMIT 3
+    </select>
+
+    <select id="selectPostComments" parameterType="long" resultType="com.trip.aslung.review.model.dto.PostCommentDto">
+        SELECT
+            c.comment_id AS commentId,
+            c.post_id AS postId,
+            c.user_id AS userId,
+            c.content,
+            DATE_FORMAT(c.created_at, '%Y-%m-%d %H:%i') AS createdAt,
+            u.nickname,
+            u.profile_image_url AS profileImg
+        FROM post_comments c
+                 JOIN users u ON c.user_id = u.user_id
+        WHERE c.post_id = #{postId}
+        ORDER BY c.created_at ASC
+    </select>
+
+    <insert id="insertPostComment" parameterType="com.trip.aslung.review.model.dto.PostCommentDto">
+        INSERT INTO post_comments (post_id, user_id, content)
+        VALUES (#{postId}, #{userId}, #{content})
+    </insert>
+
+    <select id="selectReviewsByPostId" parameterType="long" resultType="com.trip.aslung.review.model.dto.ReviewResponseDto">
+        SELECT
+            r.review_id AS reviewId,
+            r.comment,
+            r.rating,
+            r.created_at AS createdAt,
+            u.nickname AS placeName,
+            u.profile_image_url AS planTitle
+        FROM reviews r
+                 JOIN users u ON r.user_id = u.user_id
+        WHERE r.post_id = #{postId}
+        ORDER BY r.created_at DESC
+            LIMIT 5
+    </select>
+
+
+</mapper>

@@ -1,0 +1,69 @@
+package com.trip.aslung.review.model.service;
+
+import com.trip.aslung.review.model.dto.*;
+import com.trip.aslung.review.model.mapper.ReviewMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List; // [추가] List 사용을 위해 필요
+
+@Service
+@RequiredArgsConstructor
+public class ReviewService {
+
+    private final ReviewMapper reviewMapper;
+
+    // 기존: 리뷰 등록
+    @Transactional
+    public void registReview(ReviewRegistDto reviewDto) {
+        reviewMapper.insertReview(reviewDto);
+    }
+
+    // [추가] 특정 플랜의 리뷰 대상(장소) 목록 조회
+    // 조회 전용이므로 readOnly = true를 주면 성능 최적화에 도움이 됩니다.
+    @Transactional(readOnly = true)
+    public List<ReviewTargetDto> getReviewTargets(Long planId) {
+        return reviewMapper.selectReviewTargets(planId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListDto> getPostList(String keyword) {
+        return reviewMapper.selectPostList(keyword);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListDto> getHotPostList() {
+        return reviewMapper.selectHotPostList();
+    }
+
+    @Transactional
+    public PostDetailDto getPostDetail(Long postId) {
+        reviewMapper.updateViewCount(postId);
+        PostDetailDto post = reviewMapper.selectPostDetail(postId);
+
+        if (post == null) return null;
+
+        if (post.getPlanId() != null) {
+            // [확인] 여기서 수정된 XML 쿼리가 실행되어 리뷰 코멘트가 memo로 들어감
+            post.setSchedules(reviewMapper.selectPostSchedules(post.getPlanId()));
+        }
+
+        // [수정] 장소 리뷰 대신 -> 게시글 댓글(미리보기 3개)을 가져와서 넣음
+        post.setComments(reviewMapper.selectPostCommentsPreview(postId));
+
+        return post;
+    }
+
+    // 댓글 목록
+    @Transactional(readOnly = true)
+    public List<PostCommentDto> getPostComments(Long postId) {
+        return reviewMapper.selectPostComments(postId);
+    }
+
+    // 댓글 등록
+    @Transactional
+    public void registPostComment(PostCommentDto commentDto) {
+        reviewMapper.insertPostComment(commentDto);
+    }
+}
