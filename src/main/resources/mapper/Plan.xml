@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.plan.model.mapper.PlanMapper">
+
+    <select id="selectMyPlans" resultType="com.trip.aslung.plan.model.dto.PlanListResponse">
+        SELECT
+            p.plan_id     AS planId,
+            p.title       AS title,
+            p.region_name AS regionName,
+            p.start_date  AS startDate,
+            p.end_date    AS endDate,
+            p.is_public   AS isPublic,
+            p.user_id     AS ownerId
+        FROM plans p
+                 INNER JOIN plan_members m ON p.plan_id = m.plan_id
+        WHERE m.user_id = #{userId}
+          AND m.status = 'JOINED'
+          AND p.deleted_at IS NULL
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="selectPlanDetail" resultType="com.trip.aslung.plan.model.dto.PlanDetailResponse">
+        SELECT
+            plan_id     AS planId,
+            user_id     AS ownerId,
+            title       AS title,
+            region_name AS regionName,
+            start_date  AS startDate,
+            end_date    AS endDate,
+            is_public   AS isPublic,
+            share_uuid  AS shareUuid
+        FROM plans
+        WHERE plan_id = #{planId}
+    </select>
+
+    <select id="selectPlanMembers" resultType="com.trip.aslung.plan.model.dto.PlanMember">
+        SELECT
+            member_id   AS memberId,
+            user_id     AS userId,
+            role        AS role,
+            status      AS status,
+            joined_at   AS joinedAt
+        FROM plan_members
+        WHERE plan_id = #{planId}
+        ORDER BY field(role, 'OWNER', 'EDITOR', 'VIEWER'), joined_at ASC
+    </select>
+
+    <select id="selectPlanSchedules" resultType="com.trip.aslung.plan.model.dto.PlanSchedule">
+        SELECT
+            schedule_id AS scheduleId,
+            place_id    AS placeId,
+            day_number  AS dayNumber,
+            order_index AS orderIndex,
+            memo        AS memo
+        FROM plan_schedules
+        WHERE plan_id = #{planId}
+        ORDER BY day_number ASC, order_index ASC
+    </select>
+
+    <insert id="insertPlan" useGeneratedKeys="true" keyProperty="planId" parameterType="com.trip.aslung.plan.model.dto.Plan">
+        INSERT INTO plans (
+            user_id,
+            title,
+            start_date,
+            end_date,
+            is_public
+        ) VALUES (
+                     #{userId},
+                     #{title},
+                     #{startDate},
+                     #{endDate},
+                     #{isPublic}
+                 )
+    </insert>
+
+    <update id="updatePlan" parameterType="com.trip.aslung.plan.model.dto.Plan">
+        UPDATE plans
+        <set>
+            <if test="title != null">title = #{title},</if>
+
+            <if test="regionName != null">region_name = #{regionName},</if>
+
+            <if test="startDate != null">start_date = #{startDate},</if>
+            <if test="endDate != null">end_date = #{endDate},</if>
+            <if test="isPublic != null">is_public = #{isPublic},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE plan_id = #{planId}
+    </update>
+
+    <update id="deletePlan">
+        UPDATE plans
+        SET deleted_at = NOW()
+        WHERE plan_id = #{planId}
+          AND user_id = #{userId}
+    </update>
+</mapper>
