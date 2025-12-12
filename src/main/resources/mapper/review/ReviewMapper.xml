@@ -97,7 +97,10 @@
             (SELECT IFNULL(AVG(rating), 0) FROM reviews WHERE post_id = p.post_id) AS avgRating,
 
             -- 여행기 댓글 전체 개수
-            (SELECT COUNT(*) FROM post_comments WHERE post_id = p.post_id) AS commentCount
+            (SELECT COUNT(*) FROM post_comments WHERE post_id = p.post_id) AS commentCount,
+
+            -- [중요] 로그인 유저의 좋아요 여부 (1=true, 0=false)
+            (SELECT COUNT(*) FROM post_likes WHERE post_id = p.post_id AND user_id = #{userId}) > 0 AS liked
         FROM posts p
                  LEFT JOIN users u ON p.user_id = u.user_id
                  LEFT JOIN plans pl ON p.plan_id = pl.plan_id
@@ -110,9 +113,12 @@
             ps.order_index AS orderIndex,
             pl.name AS placeName,
             pl.category,
-            r.comment AS memo, IFNULL(r.rating, 0) AS rating FROM plan_schedules ps
-                                                                      JOIN places pl ON ps.place_id = pl.place_id
-                                                                      LEFT JOIN reviews r ON ps.schedule_id = r.plan_schedule_id WHERE ps.plan_id = #{planId}
+            r.comment AS memo,
+            IFNULL(r.rating, 0) AS rating
+        FROM plan_schedules ps
+                 JOIN places pl ON ps.place_id = pl.place_id
+                 LEFT JOIN reviews r ON ps.schedule_id = r.plan_schedule_id
+        WHERE ps.plan_id = #{planId}
         ORDER BY ps.day_number, ps.order_index
     </select>
 
@@ -170,13 +176,42 @@
     <update id="updatePostComment" parameterType="com.trip.aslung.review.model.dto.PostCommentDto">
         UPDATE post_comments
         SET content = #{content},
-            created_at = NOW() WHERE comment_id = #{commentId}
-                                 AND user_id = #{userId} </update>
+            created_at = NOW()
+        WHERE comment_id = #{commentId}
+          AND user_id = #{userId}
+    </update>
 
     <delete id="deletePostComment" parameterType="long">
         DELETE FROM post_comments
         WHERE comment_id = #{commentId}
     </delete>
 
+    <select id="checkPostLike" resultType="int">
+        SELECT COUNT(*)
+        FROM post_likes
+        WHERE post_id = #{postId} AND user_id = #{userId}
+    </select>
+
+    <insert id="insertPostLike">
+        INSERT INTO post_likes (post_id, user_id)
+        VALUES (#{postId}, #{userId})
+    </insert>
+
+    <delete id="deletePostLike">
+        DELETE FROM post_likes
+        WHERE post_id = #{postId} AND user_id = #{userId}
+    </delete>
+
+    <update id="increaseLikeCount">
+        UPDATE posts
+        SET like_count = like_count + 1
+        WHERE post_id = #{postId}
+    </update>
+
+    <update id="decreaseLikeCount">
+        UPDATE posts
+        SET like_count = like_count - 1
+        WHERE post_id = #{postId}
+    </update>
 
 </mapper>

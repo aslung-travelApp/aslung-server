@@ -28,7 +28,7 @@ public interface ReviewMapper {
     int updateViewCount(Long postId);
 
     // 6. 여행기 상세 기본 정보 조회
-    PostDetailDto selectPostDetail(Long postId);
+    PostDetailDto selectPostDetail(@Param("postId") Long postId, @Param("userId") Long userId);
 
     // 7. 여행기 상세 스케줄(코스) 조회
     List<PostScheduleDto> selectPostSchedules(Long planId);
@@ -50,4 +50,19 @@ public interface ReviewMapper {
 
     // [추가] 댓글 삭제
     int deletePostComment(Long commentId);
+
+    // [추가] 좋아요 상태 확인
+    int checkPostLike(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    // [추가] 좋아요 등록
+    int insertPostLike(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    // [추가] 좋아요 취소
+    int deletePostLike(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    // [추가] 게시글 좋아요 수 증가
+    int increaseLikeCount(@Param("postId") Long postId);
+
+    // [추가] 게시글 좋아요 수 감소
+    int decreaseLikeCount(@Param("postId") Long postId);
 }

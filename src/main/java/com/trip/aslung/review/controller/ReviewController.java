@@ -1,15 +1,18 @@
 package com.trip.aslung.review.controller;
 
 import com.trip.aslung.review.model.dto.PostCommentDto;
+import com.trip.aslung.review.model.dto.PostDetailDto;
 import com.trip.aslung.review.model.dto.ReviewRegistDto;
 import com.trip.aslung.review.model.dto.ReviewTargetDto;
 import com.trip.aslung.review.model.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/reviews")
@@ -54,9 +57,22 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getHotPostList());
     }
 
+    //상세 조회 API
     @GetMapping("/posts/{postId}")
-    public ResponseEntity<?> getPostDetail(@PathVariable Long postId) {
-        return ResponseEntity.ok(reviewService.getPostDetail(postId));
+    public ResponseEntity<?> getPostDetail(
+            @PathVariable Long postId,
+            @RequestParam(required = false) Long userId // userId를 쿼리스트링으로 받음
+    ) {
+        PostDetailDto post = reviewService.getPostDetail(postId, userId);
+        return ResponseEntity.ok(post);
+    }
+
+    // 좋아요 토글 API
+    @PostMapping("/posts/{postId}/like")
+    public ResponseEntity<?> toggleLike(@PathVariable Long postId, @RequestBody Map<String, Long> body) {
+        Long userId = body.get("userId");
+        boolean isLiked = reviewService.togglePostLike(postId, userId);
+        return ResponseEntity.ok(isLiked);
     }
 
     // 댓글 목록 조회 API

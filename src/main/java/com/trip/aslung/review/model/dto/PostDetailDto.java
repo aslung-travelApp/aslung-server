@@ -11,6 +11,7 @@ public class PostDetailDto {
     private String thumbnailUrl;
     private int viewCount;
     private int likeCount;
+    private boolean liked;
     private String writerNickname;
     private String writerProfileImg;
 
@@ -25,6 +26,5 @@ public class PostDetailDto {
     // 댓글 미리보기용 (최대 3개 담김)
     private List<PostCommentDto> comments;
 
-    // 전체 댓글 개수
     private int commentCount;
 }
