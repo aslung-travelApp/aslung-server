@@ -11,6 +11,7 @@ public class PostDetailDto {
     private String thumbnailUrl;
     private int viewCount;
     private int likeCount;
+    private boolean liked;
     private String writerNickname;
     private String writerProfileImg;
 
@@ -24,4 +25,6 @@ public class PostDetailDto {
     // [수정] 기존 reviews(장소리뷰) -> comments(게시글 댓글)로 변경
     // 댓글 미리보기용 (최대 3개 담김)
     private List<PostCommentDto> comments;
+
+    private int commentCount;
 }

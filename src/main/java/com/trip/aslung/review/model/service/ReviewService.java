@@ -38,9 +38,13 @@ public class ReviewService {
     }
 
     @Transactional
-    public PostDetailDto getPostDetail(Long postId) {
+    public PostDetailDto getPostDetail(Long postId, Long userId) {
         reviewMapper.updateViewCount(postId);
-        PostDetailDto post = reviewMapper.selectPostDetail(postId);
+
+        // 로그인 안 했을 경우 0으로 처리하여 에러 방지
+        Long safeUserId = (userId == null) ? 0L : userId;
+
+        PostDetailDto post = reviewMapper.selectPostDetail(postId, safeUserId);
 
         if (post == null) return null;
 
@@ -55,6 +59,22 @@ public class ReviewService {
         return post;
     }
 
+    // 좋아요 토글 로직
+    @Transactional
+    public boolean togglePostLike(Long postId, Long userId) {
+        int count = reviewMapper.checkPostLike(postId, userId);
+
+        if (count > 0) {
+            reviewMapper.deletePostLike(postId, userId);
+            reviewMapper.decreaseLikeCount(postId);
+            return false;
+        } else {
+            reviewMapper.insertPostLike(postId, userId);
+            reviewMapper.increaseLikeCount(postId);
+            return true;
+        }
+    }
+
     // 댓글 목록
     @Transactional(readOnly = true)
     public List<PostCommentDto> getPostComments(Long postId) {
@@ -65,5 +85,17 @@ public class ReviewService {
     @Transactional
     public void registPostComment(PostCommentDto commentDto) {
         reviewMapper.insertPostComment(commentDto);
+    }
+
+    // 댓글 수정
+    @Transactional
+    public void modifyPostComment(PostCommentDto commentDto) {
+        reviewMapper.updatePostComment(commentDto);
+    }
+
+    // 댓글 삭제
+    @Transactional
+    public void removePostComment(Long commentId) {
+        reviewMapper.deletePostComment(commentId);
     }
 }
