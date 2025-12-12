@@ -92,7 +92,12 @@
             p.plan_id AS planId,
             pl.start_date AS startDate,
             pl.end_date AS endDate,
+
+            -- 리뷰 평점 평균
             (SELECT IFNULL(AVG(rating), 0) FROM reviews WHERE post_id = p.post_id) AS avgRating
+
+            -- 게시글 댓글 전체 개수
+            (SELECT COUNT(*) FROM post_comments WHERE post_id = p.post_id) AS commentCount
         FROM posts p
                  LEFT JOIN users u ON p.user_id = u.user_id
                  LEFT JOIN plans pl ON p.plan_id = pl.plan_id
@@ -161,6 +166,17 @@
         ORDER BY r.created_at DESC
             LIMIT 5
     </select>
+
+    <update id="updatePostComment" parameterType="com.trip.aslung.review.model.dto.PostCommentDto">
+        UPDATE post_comments
+        SET content = #{content},
+            created_at = NOW() WHERE comment_id = #{commentId}
+                                 AND user_id = #{userId} </update>
+
+    <delete id="deletePostComment" parameterType="long">
+        DELETE FROM post_comments
+        WHERE comment_id = #{commentId}
+    </delete>
 
 
 </mapper>

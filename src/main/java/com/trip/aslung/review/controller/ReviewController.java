@@ -71,4 +71,18 @@ public class ReviewController {
         reviewService.registPostComment(commentDto);
         return ResponseEntity.ok().build();
     }
+
+    // 댓글 수정 API
+    @PutMapping("/posts/comments")
+    public ResponseEntity<?> modifyPostComment(@RequestBody PostCommentDto commentDto) {
+        reviewService.modifyPostComment(commentDto);
+        return ResponseEntity.ok().build();
+    }
+
+    // 댓글 삭제 API
+    @DeleteMapping("/posts/comments/{commentId}")
+    public ResponseEntity<?> removePostComment(@PathVariable Long commentId) {
+        reviewService.removePostComment(commentId);
+        return ResponseEntity.ok().build();
+    }
 }

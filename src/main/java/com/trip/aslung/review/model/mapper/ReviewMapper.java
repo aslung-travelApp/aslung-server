@@ -44,4 +44,10 @@ public interface ReviewMapper {
 
     // [추가] 댓글 미리보기 (3개)
     List<PostCommentDto> selectPostCommentsPreview(Long postId);
+
+    // [추가] 댓글 수정
+    int updatePostComment(PostCommentDto commentDto);
+
+    // [추가] 댓글 삭제
+    int deletePostComment(Long commentId);
 }
