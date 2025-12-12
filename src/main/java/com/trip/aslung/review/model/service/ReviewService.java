@@ -66,4 +66,16 @@ public class ReviewService {
     public void registPostComment(PostCommentDto commentDto) {
         reviewMapper.insertPostComment(commentDto);
     }
+
+    // 댓글 수정
+    @Transactional
+    public void modifyPostComment(PostCommentDto commentDto) {
+        reviewMapper.updatePostComment(commentDto);
+    }
+
+    // 댓글 삭제
+    @Transactional
+    public void removePostComment(Long commentId) {
+        reviewMapper.deletePostComment(commentId);
+    }
 }

@@ -24,4 +24,7 @@ public class PostDetailDto {
     // [수정] 기존 reviews(장소리뷰) -> comments(게시글 댓글)로 변경
     // 댓글 미리보기용 (최대 3개 담김)
     private List<PostCommentDto> comments;
+
+    // 전체 댓글 개수
+    private int commentCount;
 }
