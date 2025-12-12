@@ -96,7 +96,7 @@
             -- 리뷰 평점 평균
             (SELECT IFNULL(AVG(rating), 0) FROM reviews WHERE post_id = p.post_id) AS avgRating,
 
-            -- 게시글 댓글 전체 개수
+            -- 여행기 댓글 전체 개수
             (SELECT COUNT(*) FROM post_comments WHERE post_id = p.post_id) AS commentCount
         FROM posts p
                  LEFT JOIN users u ON p.user_id = u.user_id
