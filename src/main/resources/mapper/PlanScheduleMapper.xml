@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.plan.model.mapper.PlanScheduleMapper">
+
+    <insert id="createSchedule" parameterType="com.trip.aslung.plan.model.dto.PlanSchedule"
+            useGeneratedKeys="true" keyProperty="scheduleId">
+
+        <selectKey keyProperty="orderIndex" resultType="int" order="BEFORE">
+            SELECT IFNULL(MAX(order_index), -1) + 1
+            FROM plan_schedules
+            WHERE plan_id = #{planId}
+            AND day_number = #{dayNumber}
+        </selectKey>
+
+        INSERT INTO plan_schedules (
+        plan_id,
+        place_id,
+        day_number,
+        order_index,
+        memo
+        ) VALUES (
+        #{planId},
+        #{placeId},
+        #{dayNumber},
+        #{orderIndex},
+        #{memo}
+        )
+    </insert>
+
+    <update id="updateSchedule" parameterType="com.trip.aslung.plan.model.dto.PlanSchedule">
+        UPDATE plan_schedules
+        <set>
+            <if test="placeId != null">place_id = #{placeId},</if>
+            <if test="memo != null">memo = #{memo},</if>
+            updated_at = NOW()
+        </set>
+        WHERE schedule_id = #{scheduleId}
+        AND plan_id = #{planId}
+    </update>
+
+    <delete id="deleteSchedule">
+        DELETE FROM plan_schedules
+        WHERE schedule_id = #{scheduleId}
+    </delete>
+
+    <select id="findById" resultType="com.trip.aslung.plan.model.dto.PlanSchedule">
+        SELECT * FROM plan_schedules WHERE schedule_id = #{scheduleId}
+    </select>
+
+    <update id="pullScheduleOrders">
+        UPDATE plan_schedules
+        SET order_index = order_index - 1
+        WHERE plan_id = #{planId}
+          AND day_number = #{dayNumber}
+          AND order_index &gt; #{startOrder}
+    </update>
+
+    <update id="pushScheduleOrders">
+        UPDATE plan_schedules
+        SET order_index = order_index + 1
+        WHERE plan_id = #{planId}
+          AND day_number = #{dayNumber}
+          AND order_index &gt;= #{startOrder}
+    </update>
+
+    <update id="updateScheduleDayAndOrder">
+        UPDATE plan_schedules
+        SET
+            day_number = #{dayNumber},
+            order_index = #{orderIndex},
+            updated_at = NOW()
+        WHERE schedule_id = #{scheduleId}
+    </update>
+
+    <update id="moveOrderBack">
+        UPDATE plan_schedules
+        SET order_index = order_index - 1
+        WHERE plan_id = #{planId} AND day_number = #{day}
+          AND order_index &gt; #{oldOrder}
+          AND order_index &lt;= #{newOrder}
+    </update>
+
+    <update id="moveOrderFront">
+        UPDATE plan_schedules
+        SET order_index = order_index + 1
+        WHERE plan_id = #{planId} AND day_number = #{day}
+          AND order_index &gt;= #{newOrder}
+          AND order_index &lt; #{oldOrder}
+    </update>
+
+    <select id="selectMaxOrderIndex" resultType="int">
+        SELECT IFNULL(MAX(order_index), -1)
+        FROM plan_schedules
+        WHERE plan_id = #{planId} AND day_number = #{dayNumber}
+    </select>
+
+</mapper>
