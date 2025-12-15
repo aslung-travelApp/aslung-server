@@ -1,10 +1,10 @@
 package com.trip.aslung.plan.model.service;
 
-import com.trip.aslung.plan.model.dto.PlanMember;
+import com.trip.aslung.planMember.model.dto.PlanMember;
 import com.trip.aslung.plan.model.dto.PlanSchedule;
 import com.trip.aslung.plan.model.dto.ScheduleMoveRequest;
 import com.trip.aslung.plan.model.dto.ScheduleUpdateRequest;
-import com.trip.aslung.plan.model.mapper.PlanMemberMapper;
+import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
 import com.trip.aslung.plan.model.mapper.PlanScheduleMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

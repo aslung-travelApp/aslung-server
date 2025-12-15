@@ -2,7 +2,8 @@ package com.trip.aslung.plan.model.service;
 
 import com.trip.aslung.plan.model.dto.*;
 import com.trip.aslung.plan.model.mapper.PlanMapper;
-import com.trip.aslung.plan.model.mapper.PlanMemberMapper;
+import com.trip.aslung.planMember.model.dto.PlanMember;
+import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -134,5 +135,14 @@ public class PlanServiceImpl implements PlanService {
 
         // 소프트 삭제 => 여행기 삭제 로직 필요
         planMapper.deletePlan(planId);
+    }
+
+    @Override
+    public void updateVisibility(Long planId, Long userId, boolean isPublic) {
+        PlanDetailResponse plan = planMapper.selectPlanDetail(planId);
+        if(plan == null) throw new IllegalArgumentException("여행 계획이 없습니다.");
+
+        if(!plan.getOwnerId().equals(userId)) throw new SecurityException("공개 설정 변경은 방장만 가능합니다.");
+        planMapper.updatePlanVisibility(planId, isPublic);
     }
 }

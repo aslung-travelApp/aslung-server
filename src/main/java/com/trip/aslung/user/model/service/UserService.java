@@ -9,6 +9,5 @@ public interface UserService {
     User getUserByEmail(String email);
     User findByUserId(Long userId);
     void updateProfile(Long userId, UserUpdateRequest request, MultipartFile image);
-
     UserStatsResponse getUserStats(Long userId);
 }

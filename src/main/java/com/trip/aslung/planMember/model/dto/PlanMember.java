@@ -1,4 +1,4 @@
-package com.trip.aslung.plan.model.dto;
+package com.trip.aslung.planMember.model.dto;
 
 import lombok.*;
 
@@ -13,7 +13,11 @@ public class PlanMember {
     private Long memberId;
     private Long planId;
     private Long userId;
+
     private String role;        // OWNER, EDITOR, VIEWER
     private String status;      // INVITED, JOINED
+
+    private LocalDateTime createdAt;
     private LocalDateTime joinedAt;
+    private LocalDateTime updatedAt;
 }

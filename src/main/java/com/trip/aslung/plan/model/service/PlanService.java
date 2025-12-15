@@ -13,4 +13,6 @@ public interface PlanService {
     Long createPlan(Long userId, PlanCreateRequest request);
     void updatePlan(Long userId, Long planId, PlanUpdateRequest request);
     void deletePlan(Long userId, Long planId);
+
+    void updateVisibility(Long planId, Long userId, boolean isPublic);
 }

@@ -1,6 +1,7 @@
 package com.trip.aslung.user.controller;
 
 import com.trip.aslung.user.model.dto.User;
+import com.trip.aslung.user.model.dto.UserSearchResponse;
 import com.trip.aslung.user.model.dto.UserStatsResponse;
 import com.trip.aslung.user.model.dto.UserUpdateRequest;
 import com.trip.aslung.user.model.service.UserPreferenceService;
@@ -10,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -60,5 +62,22 @@ public class UserController {
 
         return ResponseEntity.ok(stats);
     }
+    @GetMapping("/search")
+    public ResponseEntity<UserSearchResponse> searchUser(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam String email
+    ){
+        User user = userService.getUserByEmail(email);
 
+        if(user==null || user.getDeletedAt()!=null) return ResponseEntity.notFound().build();
+
+        UserSearchResponse response = UserSearchResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
 }
