@@ -35,7 +35,7 @@
         WHERE plan_id = #{planId}
     </select>
 
-    <select id="selectPlanMembers" resultType="com.trip.aslung.plan.model.dto.PlanMember">
+    <select id="selectPlanMembers" resultType="com.trip.aslung.planMember.model.dto.PlanMember">
         SELECT
             member_id   AS memberId,
             user_id     AS userId,
@@ -87,6 +87,13 @@
             <if test="isPublic != null">is_public = #{isPublic},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </set>
+        WHERE plan_id = #{planId}
+    </update>
+
+    <update id="updatePlanVisibility">
+        UPDATE plans
+        SET is_public = #{isPublic},
+            updated_at = NOW()
         WHERE plan_id = #{planId}
     </update>
 

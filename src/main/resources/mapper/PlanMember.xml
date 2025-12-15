@@ -2,27 +2,67 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.trip.aslung.plan.model.mapper.PlanMemberMapper">
-    <insert id="insertPlanMember" parameterType="com.trip.aslung.plan.model.dto.PlanMember">
-        INSERT INTO plan_members (plan_id, user_id, role, status, joined_at)
-        VALUES (
-                   #{planId},
-                   #{userId},
-                   #{role},   #{status},
-                   #{joinedAt}
-               )
+<mapper namespace="com.trip.aslung.planMember.model.mapper.PlanMemberMapper">
+
+    <insert id="insertPlanMember" useGeneratedKeys="true" keyProperty="memberId"
+            parameterType="com.trip.aslung.planMember.model.dto.PlanMember">
+        INSERT INTO plan_members (
+            plan_id, user_id, role, status, joined_at
+        ) VALUES (
+                     #{planId}, #{userId}, #{role}, #{status}, #{joinedAt}
+                 )
     </insert>
 
-    <select id="findByPlanIdAndUserId" resultType="com.trip.aslung.plan.model.dto.PlanMember">
-        SELECT
-            member_id  AS memberId,
-            plan_id    AS planId,
-            user_id    AS userId,
-            role       AS role,
-            status     AS status,
-            joined_at  AS joinedAt
+    <select id="findByPlanIdAndUserId" resultType="com.trip.aslung.planMember.model.dto.PlanMember">
+        SELECT *
         FROM plan_members
         WHERE plan_id = #{planId}
           AND user_id = #{userId}
     </select>
+
+    <select id="existsByPlanIdAndUserId" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM plan_members
+        WHERE plan_id = #{planId} AND user_id = #{userId}
+    </select>
+
+    <delete id="deleteMember">
+        DELETE FROM plan_members
+        WHERE plan_id = #{planId} AND user_id = #{userId}
+    </delete>
+
+    <select id="findById" resultType="com.trip.aslung.planMember.model.dto.PlanMember">
+        SELECT *
+        FROM plan_members
+        WHERE member_id = #{memberId}
+    </select>
+
+    <update id="updateMemberStatus">
+        UPDATE plan_members
+        SET status = #{status},
+            joined_at = NOW()  WHERE plan_id = #{planId}
+                                 AND user_id = #{userId}
+    </update>
+
+    <select id="findInvitationsByUserId" resultType="com.trip.aslung.planMember.model.dto.InvitationResponse">
+        SELECT
+            pm.plan_id      AS planId,
+            p.title         AS planTitle,
+            u.nickname      AS ownerName,
+            pm.created_at   AS invitedAt
+        FROM plan_members pm
+                 JOIN plans p ON pm.plan_id = p.plan_id
+                 JOIN users u ON p.user_id = u.user_id
+        WHERE pm.user_id = #{userId}
+          AND pm.status = 'INVITED'
+          AND p.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+        ORDER BY pm.created_at DESC
+    </select>
+
+    <update id="updatePlanVisibility">
+        UPDATE plans
+        SET is_public = #{isPublic},
+            updated_at = NOW()  WHERE plan_id = #{planId}
+    </update>
 </mapper>

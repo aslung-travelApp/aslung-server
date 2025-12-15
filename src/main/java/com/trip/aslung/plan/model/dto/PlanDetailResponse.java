@@ -1,9 +1,9 @@
 package com.trip.aslung.plan.model.dto;
 
+import com.trip.aslung.planMember.model.dto.PlanMember;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
-import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 import java.time.LocalDate;
 import java.util.List;
