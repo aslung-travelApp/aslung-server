@@ -227,4 +227,47 @@
     <delete id="deletePostByAdmin" parameterType="long">
         DELETE FROM posts WHERE post_id = #{postId}
     </delete>
+
+    <insert id="insertPost" parameterType="com.trip.aslung.review.model.dto.TripPostRegistDto"
+            useGeneratedKeys="true" keyProperty="postId">
+        INSERT INTO posts (
+            user_id,
+            plan_id,
+            title,
+            content,
+            region_name,
+            thumbnail_url,
+            view_count,
+            like_count
+        ) VALUES (
+                     #{userId},
+                     #{planId},
+                     #{title},
+                     #{content},
+                     #{regionName},
+                     'https://dummyimage.com/600x400/000/fff&amp;text=Trip', 0,
+                     0
+                 )
+    </insert>
+
+    <insert id="insertTripReviews">
+        INSERT INTO reviews (
+        user_id,
+        post_id,
+        plan_schedule_id,
+        place_id,
+        rating,
+        comment
+        ) VALUES
+        <foreach collection="reviews" item="item" separator=",">
+            (
+            #{userId},
+            #{postId},
+            #{item.planScheduleId},
+            #{item.placeId},
+            #{item.rating},
+            #{item.comment}
+            )
+        </foreach>
+    </insert>
 </mapper>

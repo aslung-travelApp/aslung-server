@@ -117,4 +117,20 @@ public class ReviewService {
             throw new RuntimeException("삭제 권한이 없거나 존재하지 않는 게시글입니다.");
         }
     }
+
+    // [추가] 여행기 등록 로직 (트랜잭션 필수!)
+    @Transactional
+    public void registTripPost(TripPostRegistDto registDto) {
+
+        // 1. 게시글 저장
+        reviewMapper.insertPost(registDto);
+
+        // 방금 생긴 게시글 ID
+        Long newPostId = registDto.getPostId();
+
+        // 2. 장소별 리뷰(Reviews) 저장
+        if (registDto.getPlaceReviews() != null && !registDto.getPlaceReviews().isEmpty()) {
+            reviewMapper.insertTripReviews(newPostId, registDto.getUserId(), registDto.getPlaceReviews());
+        }
+    }
 }
