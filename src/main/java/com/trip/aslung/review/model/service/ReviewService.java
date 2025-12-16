@@ -98,4 +98,10 @@ public class ReviewService {
     public void removePostComment(Long commentId) {
         reviewMapper.deletePostComment(commentId);
     }
+
+    // 여행기 삭제
+    @Transactional
+    public void removePost(Long postId) {
+        reviewMapper.deletePost(postId);
+    }
 }

@@ -214,4 +214,9 @@
         WHERE post_id = #{postId}
     </update>
 
+    <delete id="deletePost" parameterType="long">
+        DELETE FROM posts
+        WHERE post_id = #{postId}
+    </delete>
+
 </mapper>

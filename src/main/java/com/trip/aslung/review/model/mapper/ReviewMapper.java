@@ -65,4 +65,7 @@ public interface ReviewMapper {
 
     // [추가] 게시글 좋아요 수 감소
     int decreaseLikeCount(@Param("postId") Long postId);
+
+    // [추가] 여행기 삭제
+    int deletePost(Long postId);
 }

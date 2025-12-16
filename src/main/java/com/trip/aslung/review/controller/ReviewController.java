@@ -45,6 +45,13 @@ public class ReviewController {
         }
     }
 
+    // 여행기 삭제 API
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<?> removePost(@PathVariable("postId") Long postId) {
+        reviewService.removePost(postId);
+        return ResponseEntity.ok().build();
+    }
+
     // 여행기 목록 (검색 포함)
     @GetMapping("/posts")
     public ResponseEntity<?> getPostList(@RequestParam(required = false) String keyword) {
