@@ -65,4 +65,13 @@ public interface ReviewMapper {
 
     // [추가] 게시글 좋아요 수 감소
     int decreaseLikeCount(@Param("postId") Long postId);
+
+    // [수정] 여행기 삭제
+    int deletePost(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    // [추가] 유저의 역할(ADMIN/USER) 조회
+    String selectUserRole(Long userId);
+
+    // [추가] 관리자용 삭제 (작성자 확인 없이 글 번호만으로 삭제)
+    int deletePostByAdmin(Long postId);
 }

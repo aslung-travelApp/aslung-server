@@ -98,4 +98,23 @@ public class ReviewService {
     public void removePostComment(Long commentId) {
         reviewMapper.deletePostComment(commentId);
     }
+
+    // 여행기 삭제
+    @Transactional
+    public void removePost(Long postId, Long userId) {
+        String role = reviewMapper.selectUserRole(userId);
+
+        int result = 0;
+
+        if ("ADMIN".equals(role)) {
+            result = reviewMapper.deletePostByAdmin(postId);
+        }
+        else {
+            result = reviewMapper.deletePost(postId, userId);
+        }
+
+        if (result == 0) {
+            throw new RuntimeException("삭제 권한이 없거나 존재하지 않는 게시글입니다.");
+        }
+    }
 }
