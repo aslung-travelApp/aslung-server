@@ -220,4 +220,11 @@
             AND user_id = #{userId}
     </delete>
 
+    <select id="selectUserRole" parameterType="long" resultType="string">
+        SELECT role FROM users WHERE user_id = #{userId}
+    </select>
+
+    <delete id="deletePostByAdmin" parameterType="long">
+        DELETE FROM posts WHERE post_id = #{postId}
+    </delete>
 </mapper>
