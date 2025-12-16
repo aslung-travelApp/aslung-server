@@ -101,7 +101,13 @@ public class ReviewService {
 
     // 여행기 삭제
     @Transactional
-    public void removePost(Long postId) {
-        reviewMapper.deletePost(postId);
+    public void removePost(Long postId, Long userId) {
+        // DB에서 삭제 시도 (조건: 글 번호 + 작성자 ID가 일치해야 함)
+        int result = reviewMapper.deletePost(postId, userId);
+
+        // 삭제된 행이 0개라면? -> 본인 글이 아니거나 글이 없는 것
+        if (result == 0) {
+            throw new RuntimeException("삭제 권한이 없거나 존재하지 않는 게시글입니다.");
+        }
     }
 }

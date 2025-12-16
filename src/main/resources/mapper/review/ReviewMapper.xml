@@ -217,6 +217,7 @@
     <delete id="deletePost" parameterType="long">
         DELETE FROM posts
         WHERE post_id = #{postId}
+            AND user_id = #{userId}
     </delete>
 
 </mapper>
