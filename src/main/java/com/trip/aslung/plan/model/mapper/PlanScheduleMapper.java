@@ -3,6 +3,8 @@ package com.trip.aslung.plan.model.mapper;
 import com.trip.aslung.plan.model.dto.PlanSchedule;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.util.List;
+
 @Mapper
 public interface PlanScheduleMapper {
 
@@ -16,4 +18,5 @@ public interface PlanScheduleMapper {
     void moveOrderFront(Long planId, int day, int oldOrder, int newOrder);
     void updateScheduleDayAndOrder(PlanSchedule schedule);
     int selectMaxOrderIndex(Long planId, int dayNumber);
+    List<PlanSchedule> selectSchedulesByPlanId(Long planId);
 }

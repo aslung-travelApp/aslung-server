@@ -19,4 +19,8 @@ public class PlanSchedule {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // DB 테이블에는 없지만, JOIN해서 가져온 데이터를 담을 용도
+    private String placeName;   // places 테이블의 name
+    private String category;    // places 테이블의 category
 }

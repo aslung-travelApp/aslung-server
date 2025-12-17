@@ -1,9 +1,6 @@
 package com.trip.aslung.review.controller;
 
-import com.trip.aslung.review.model.dto.PostCommentDto;
-import com.trip.aslung.review.model.dto.PostDetailDto;
-import com.trip.aslung.review.model.dto.ReviewRegistDto;
-import com.trip.aslung.review.model.dto.ReviewTargetDto;
+import com.trip.aslung.review.model.dto.*;
 import com.trip.aslung.review.model.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -110,5 +107,21 @@ public class ReviewController {
     public ResponseEntity<?> removePostComment(@PathVariable Long commentId) {
         reviewService.removePostComment(commentId);
         return ResponseEntity.ok().build();
+    }
+
+    // 여행기 장소별 리뷰 등록 API
+    @PostMapping("/posts")
+    public ResponseEntity<?> registTripPost(@RequestBody TripPostRegistDto registDto) {
+        // 프론트에서 보낸 데이터가 잘 들어왔는지 로그 확인
+        System.out.println("여행기 등록 요청: " + registDto);
+        registDto.setUserId(1L);
+        try {
+            // Service 호출
+            reviewService.registTripPost(registDto);
+            return new ResponseEntity<>(HttpStatus.CREATED);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

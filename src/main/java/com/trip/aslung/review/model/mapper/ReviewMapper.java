@@ -74,4 +74,10 @@ public interface ReviewMapper {
 
     // [추가] 관리자용 삭제 (작성자 확인 없이 글 번호만으로 삭제)
     int deletePostByAdmin(Long postId);
+
+    // [추가] 1. 여행기 게시글 저장 (useGeneratedKeys로 ID 반환받음)
+    int insertPost(TripPostRegistDto registDto);
+
+    // [추가] 2. 장소별 리뷰 일괄 저장 (리스트 처리)
+    void insertTripReviews(List<TripPostRegistDto.PlaceReviewDto> list);
 }

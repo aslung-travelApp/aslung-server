@@ -117,4 +117,30 @@ public class ReviewService {
             throw new RuntimeException("삭제 권한이 없거나 존재하지 않는 게시글입니다.");
         }
     }
+
+    // [추가] 여행기 등록 로직 (트랜잭션 필수!)
+    @Transactional
+    public void registTripPost(TripPostRegistDto registDto) {
+
+        // 1. 게시글(TripPost) 먼저 저장
+        // 이 시점에 DB가 생성한 ID가 registDto.getPostId()에 담깁니다.
+        reviewMapper.insertPost(registDto);
+
+        // 2. 장소별 리뷰(PlaceReviews) 리스트 처리
+        List<TripPostRegistDto.PlaceReviewDto> reviews = registDto.getPlaceReviews();
+
+        if (reviews != null && !reviews.isEmpty()) {
+
+            // ★★★ [가장 중요한 부분] ★★★
+            // 리스트를 한 바퀴 돌면서 "너네 부모(게시글) 번호는 이거야!"라고 알려줘야 합니다.
+            for (TripPostRegistDto.PlaceReviewDto review : reviews) {
+                review.setPostId(registDto.getPostId());
+                review.setUserId(registDto.getUserId());
+            }
+
+            // 3. ID가 채워진 리스트를 한 번에 저장
+            // (인자를 3개 보내지 말고, 리스트 하나만 보냅니다)
+            reviewMapper.insertTripReviews(reviews);
+        }
+    }
 }
