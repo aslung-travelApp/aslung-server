@@ -2,6 +2,7 @@ package com.trip.aslung.plan.model.service;
 
 import com.trip.aslung.plan.model.dto.*;
 import com.trip.aslung.plan.model.mapper.PlanMapper;
+import com.trip.aslung.plan.model.mapper.PlanScheduleMapper;
 import com.trip.aslung.planMember.model.dto.PlanMember;
 import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class PlanServiceImpl implements PlanService {
 
     private final PlanMapper planMapper;
     private final PlanMemberMapper planMemberMapper;
+    private final PlanScheduleMapper planScheduleMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -50,7 +52,7 @@ public class PlanServiceImpl implements PlanService {
         }
 
         // 4. 스케줄 조회
-        List<PlanSchedule> schedules = planMapper.selectPlanSchedules(planId);
+        List<PlanSchedule> schedules = planScheduleMapper.selectSchedulesByPlanId(planId);
 
         plan.setMembers(members);
         plan.setSchedules(schedules);

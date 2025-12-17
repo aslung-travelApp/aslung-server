@@ -21,5 +21,7 @@ public class TripPostRegistDto {
         private Long placeId;        // 장소 ID
         private int rating;          // 별점
         private String comment;      // 한줄평
+        private Long postId;
+        private Long userId;
     }
 }

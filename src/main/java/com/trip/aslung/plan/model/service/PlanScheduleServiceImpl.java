@@ -12,6 +12,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -115,6 +117,13 @@ public class PlanScheduleServiceImpl implements PlanScheduleService{
         schedule.setDayNumber(newDay);
         schedule.setOrderIndex(newOrder);
         planScheduleMapper.updateScheduleDayAndOrder(schedule);
+    }
+
+    // [추가] Mapper의 JOIN 쿼리를 호출
+    @Override
+    public List<PlanSchedule> getSchedulesByPlanId(Long planId) {
+        // 아까 XML과 Mapper 인터페이스에 만든 그 메서드를 호출합니다.
+        return planScheduleMapper.selectSchedulesByPlanId(planId);
     }
 
     private void validatePermission(Long planId, Long userId) {

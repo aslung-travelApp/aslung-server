@@ -79,9 +79,5 @@ public interface ReviewMapper {
     int insertPost(TripPostRegistDto registDto);
 
     // [추가] 2. 장소별 리뷰 일괄 저장 (리스트 처리)
-    int insertTripReviews(
-            @Param("postId") Long postId,
-            @Param("userId") Long userId,
-            @Param("reviews") List<TripPostRegistDto.PlaceReviewDto> reviews
-    );
+    void insertTripReviews(List<TripPostRegistDto.PlaceReviewDto> list);
 }

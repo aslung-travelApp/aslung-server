@@ -122,15 +122,25 @@ public class ReviewService {
     @Transactional
     public void registTripPost(TripPostRegistDto registDto) {
 
-        // 1. 게시글 저장
+        // 1. 게시글(TripPost) 먼저 저장
+        // 이 시점에 DB가 생성한 ID가 registDto.getPostId()에 담깁니다.
         reviewMapper.insertPost(registDto);
 
-        // 방금 생긴 게시글 ID
-        Long newPostId = registDto.getPostId();
+        // 2. 장소별 리뷰(PlaceReviews) 리스트 처리
+        List<TripPostRegistDto.PlaceReviewDto> reviews = registDto.getPlaceReviews();
 
-        // 2. 장소별 리뷰(Reviews) 저장
-        if (registDto.getPlaceReviews() != null && !registDto.getPlaceReviews().isEmpty()) {
-            reviewMapper.insertTripReviews(newPostId, registDto.getUserId(), registDto.getPlaceReviews());
+        if (reviews != null && !reviews.isEmpty()) {
+
+            // ★★★ [가장 중요한 부분] ★★★
+            // 리스트를 한 바퀴 돌면서 "너네 부모(게시글) 번호는 이거야!"라고 알려줘야 합니다.
+            for (TripPostRegistDto.PlaceReviewDto review : reviews) {
+                review.setPostId(registDto.getPostId());
+                review.setUserId(registDto.getUserId());
+            }
+
+            // 3. ID가 채워진 리스트를 한 번에 저장
+            // (인자를 3개 보내지 말고, 리스트 하나만 보냅니다)
+            reviewMapper.insertTripReviews(reviews);
         }
     }
 }
