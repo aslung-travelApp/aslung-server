@@ -1,9 +1,8 @@
 package com.trip.aslung.plan.model.service;
 
+import com.trip.aslung.plan.model.dto.*;
+import com.trip.aslung.plan.model.mapper.PlaceMapper;
 import com.trip.aslung.planMember.model.dto.PlanMember;
-import com.trip.aslung.plan.model.dto.PlanSchedule;
-import com.trip.aslung.plan.model.dto.ScheduleMoveRequest;
-import com.trip.aslung.plan.model.dto.ScheduleUpdateRequest;
 import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
 import com.trip.aslung.plan.model.mapper.PlanScheduleMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +21,55 @@ public class PlanScheduleServiceImpl implements PlanScheduleService{
 
     private final PlanScheduleMapper planScheduleMapper;
     private final PlanMemberMapper planMemberMapper;
-    @Override
-    public void addSchedule(Long userId, Long planId, PlanSchedule request) {
-        validatePermission(planId,userId);
+    private final PlaceMapper placeMapper;
 
+    @Override
+    @Transactional
+    public void addSchedule(Long userId, Long planId, ScheduleAddRequest request) {
+        validatePermission(planId, userId);
+
+        // [STEP 1] 카카오 ID로 1차 검색 (가장 정확)
+        Place place = placeMapper.findByKakaoMapId(request.getKakaoPlaceId());
+
+        Long finalPlaceId;
+
+        if (place != null) {
+            // 1-1. 카카오 ID로 찾음 -> 바로 사용
+            finalPlaceId = place.getPlaceId();
+
+        } else {
+            // [STEP 2] ID로 못 찾음 -> 이름 & 좌표로 2차 검색 (중복 방지)
+            place = placeMapper.findByNameAndLocation(
+                    request.getPlaceName(),
+                    request.getLat(),
+                    request.getLng()
+            );
+
+            if (place != null) {
+                // 2-1. 데이터는 있는데 카카오 ID만 없는 경우 -> ID 업데이트해주고 사용 (데이터 보정)
+                placeMapper.updateKakaoMapId(place.getPlaceId(), request.getKakaoPlaceId());
+                finalPlaceId = place.getPlaceId();
+
+            } else {
+                // [STEP 3] 진짜 없는 장소 -> 새로 저장
+                Place newPlace = Place.builder()
+                        .kakaoMapId(request.getKakaoPlaceId())
+                        .name(request.getPlaceName())
+                        .address(request.getAddress())
+                        .category(request.getCategory())
+                        .latitude(request.getLat())
+                        .longitude(request.getLng())
+                        .imageUrl(request.getImageUrl())
+                        .build();
+
+                placeMapper.savePlace(newPlace);
+                finalPlaceId = newPlace.getPlaceId();
+            }
+        }
+
+        // [STEP 4] 일정 등록
         request.setPlanId(planId);
+        request.setPlaceId(finalPlaceId);
         planScheduleMapper.createSchedule(request);
     }
 

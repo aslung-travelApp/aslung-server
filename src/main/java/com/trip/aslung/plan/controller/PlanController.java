@@ -26,7 +26,7 @@ public class PlanController {
     public ResponseEntity<List<PlanListResponse>> getMyPlans(
             @AuthenticationPrincipal Long userId
     ){
-        List<PlanListResponse> myPlans = planService.getMyPlans(1L);
+        List<PlanListResponse> myPlans = planService.getMyPlans(userId);
         return ResponseEntity.ok(myPlans);
     }
 

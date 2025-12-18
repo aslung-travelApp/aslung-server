@@ -4,16 +4,24 @@ import com.trip.aslung.user.model.dto.User;
 import com.trip.aslung.user.model.dto.UserSearchResponse;
 import com.trip.aslung.user.model.dto.UserStatsResponse;
 import com.trip.aslung.user.model.dto.UserUpdateRequest;
-import com.trip.aslung.user.model.service.UserPreferenceService;
 import com.trip.aslung.user.model.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.Cookie;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -22,6 +30,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController {
 
     private final UserService userService;
+    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
+    private String kakaoClientId;
+
+    @Value("${kakao.logout-redirect-uri}")
+    private String logoutRedirectUri;
 
     @GetMapping("/me")
     public ResponseEntity<User> getMyInfo(@AuthenticationPrincipal Long userId){
@@ -46,10 +59,28 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        // 현재 프론트에서 액세스 토큰 버리기로 구현
-        // refresh token 구현 후 삭제 로직 필요
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Map<String, String>> logout(HttpServletRequest request, HttpServletResponse response) {
+
+        // 1. 서버 세션 및 인증 정보 삭제 (Spring Security)
+        new SecurityContextLogoutHandler().logout(request, response,
+                SecurityContextHolder.getContext().getAuthentication());
+
+        // 2. JSESSIONID 등 쿠키 삭제 (안전을 위해)
+        Cookie cookie = new Cookie("Authorization", null);
+        cookie.setMaxAge(0);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+
+        // 3. 카카오 로그아웃 URL 생성 (백엔드에서 조립)
+        String kakaoLogoutUrl = "https://kauth.kakao.com/oauth/logout"
+                + "?client_id=" + kakaoClientId
+                + "&logout_redirect_uri=" + logoutRedirectUri;
+
+        // 4. 프론트로 URL 반환
+        Map<String, String> result = new HashMap<>();
+        result.put("logoutUrl", kakaoLogoutUrl);
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/stats")

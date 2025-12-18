@@ -9,8 +9,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher; // 이거 추가 필요
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 
 import java.util.Collections;
 
@@ -21,47 +23,53 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
-    private final  JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // CORS 설정
                 .cors(corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                         CorsConfiguration config = new CorsConfiguration();
-
                         config.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
                         config.setAllowedMethods(Collections.singletonList("*"));
                         config.setAllowCredentials(true);
                         config.setAllowedHeaders(Collections.singletonList("*"));
-                        config.setMaxAge(3600L); // 1시간 기억
-
+                        config.setMaxAge(3600L);
                         return config;
                     }
                 }))
+                .csrf(AbstractHttpConfigurer::disable)
 
-                // CSRF 끄기
-                .csrf(csrf -> csrf.disable())
+                // 1. 폼 로그인, HTTP Basic 비활성화 (API 서버이므로)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
 
-                // 권한 설정
+                // 2. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/user/**").authenticated()
+                        .requestMatchers("/api/v1/user/**", "/api/v1/plans/**").authenticated()
                         .anyRequest().permitAll()
                 )
 
-                // JWT 필터 넣기
+                // 3. JWT 필터
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // OAuth2 로그인 설정
+                // 4. OAuth2 로그인
                 .oauth2Login(oauth2 -> {
-                    // 1. 유저 정보 받아서 DB 저장
                     oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService));
-
-                    // 2. 로그인 성공 시 토큰 발급 후 리다이렉트
                     oauth2.successHandler(oAuth2LoginSuccessHandler);
-                });
+                })
+
+                // ★★★ 5. 예외 처리 (여기가 핵심 수정) ★★★
+                .exceptionHandling(exception -> exception
+                        // "/api/"로 시작하는 URL에서 예외가 발생하면 customAuthenticationEntryPoint(401)를 실행한다.
+                        .defaultAuthenticationEntryPointFor(
+                                customAuthenticationEntryPoint,
+                                new AntPathRequestMatcher("/api/**")
+                        )
+                );
 
         return http.build();
     }

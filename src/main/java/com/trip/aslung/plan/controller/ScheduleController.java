@@ -1,6 +1,7 @@
 package com.trip.aslung.plan.controller;
 
 import com.trip.aslung.plan.model.dto.PlanSchedule;
+import com.trip.aslung.plan.model.dto.ScheduleAddRequest;
 import com.trip.aslung.plan.model.dto.ScheduleMoveRequest;
 import com.trip.aslung.plan.model.dto.ScheduleUpdateRequest;
 import com.trip.aslung.plan.model.service.PlanScheduleService;
@@ -21,7 +22,7 @@ public class ScheduleController {
     public ResponseEntity<Void> addSchedule(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long planId,
-            @RequestBody PlanSchedule request
+            @RequestBody ScheduleAddRequest request
     ){
         planScheduleService.addSchedule(userId, planId, request);
         return ResponseEntity.ok().build();

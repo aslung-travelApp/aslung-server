@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.plan.model.mapper.PlaceMapper">
+    <select id="findByKakaoMapId" resultType="com.trip.aslung.plan.model.dto.Place">
+        SELECT
+            place_id AS placeId,
+            kakao_map_id AS kakaoMapId,
+            name,
+            address,
+            category,
+            latitude,
+            longitude,
+            image_url AS imageUrl
+        FROM places
+        WHERE kakao_map_id = #{kakaoMapId}
+    </select>
+
+    <insert id="savePlace" useGeneratedKeys="true" keyProperty="placeId">
+        INSERT INTO places (
+            kakao_map_id, name, address, category, latitude, longitude, image_url
+        ) VALUES (
+                     #{kakaoMapId}, #{name}, #{address}, #{category}, #{latitude}, #{longitude}, #{imageUrl}
+                 )
+    </insert>
+
+    <select id="findByNameAndLocation" resultType="com.trip.aslung.plan.model.dto.Place">
+        SELECT * FROM places
+        WHERE name = #{name}
+          AND ABS(latitude - #{lat}) &lt; 0.0001
+          AND ABS(longitude - #{lng}) &lt; 0.0001
+            LIMIT 1
+    </select>
+
+    <update id="updateKakaoMapId">
+        UPDATE places
+        SET kakao_map_id = #{kakaoMapId}
+        WHERE place_id = #{placeId}
+    </update>
+</mapper>
