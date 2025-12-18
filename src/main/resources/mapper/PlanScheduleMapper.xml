@@ -11,7 +11,7 @@
             SELECT IFNULL(MAX(order_index), -1) + 1
             FROM plan_schedules
             WHERE plan_id = #{planId}
-            AND day_number = #{dayNumber}
+            AND day_number = #{tripDay}
         </selectKey>
 
         INSERT INTO plan_schedules (
@@ -23,7 +23,7 @@
         ) VALUES (
         #{planId},
         #{placeId},
-        #{dayNumber},
+        #{tripDay},
         #{orderIndex},
         #{memo}
         )

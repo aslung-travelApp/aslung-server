@@ -23,4 +23,6 @@ public class PlanSchedule {
     // DB 테이블에는 없지만, JOIN해서 가져온 데이터를 담을 용도
     private String placeName;   // places 테이블의 name
     private String category;    // places 테이블의 category
+    private Double latitude;  // 위도 (y)
+    private Double longitude; // 경도 (x)
 }
