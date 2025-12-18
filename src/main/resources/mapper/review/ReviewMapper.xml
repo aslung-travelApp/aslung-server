@@ -291,4 +291,22 @@
         WHERE p.user_id = #{userId}  GROUP BY p.post_id
         ORDER BY p.created_at DESC
     </select>
+
+    <update id="updatePost">
+        UPDATE posts
+        SET
+            title = #{title},
+            content = #{content},
+            updated_at = NOW()
+        WHERE post_id = #{postId}
+          AND user_id = #{userId}  </update>
+
+    <update id="updatePlaceReview">
+        UPDATE reviews
+        SET
+            rating = #{rating},
+            comment = #{comment}
+        WHERE post_id = #{postId}
+          AND plan_schedule_id = #{planScheduleId}
+    </update>
 </mapper>

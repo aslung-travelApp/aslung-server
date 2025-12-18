@@ -83,4 +83,20 @@ public interface ReviewMapper {
 
     // [추가] XML 쿼리 ID와 일치하는 메서드
     List<PostListDto> selectMyPostList(Long userId);
+
+    // 1. 게시글 수정 (제목, 내용)
+    int updatePost(
+            @Param("postId") Long postId,
+            @Param("userId") Long userId,
+            @Param("title") String title,
+            @Param("content") String content
+    );
+
+    // 2. 장소별 리뷰 수정 (별점, 코멘트)
+    void updatePlaceReview(
+            @Param("postId") Long postId,
+            @Param("planScheduleId") Long planScheduleId,
+            @Param("rating") int rating,
+            @Param("comment") String comment
+    );
 }
