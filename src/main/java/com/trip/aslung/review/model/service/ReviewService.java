@@ -143,4 +143,10 @@ public class ReviewService {
             reviewMapper.insertTripReviews(reviews);
         }
     }
+
+    @Transactional(readOnly = true)
+    public List<PostListDto> getMyPostList(Long userId) {
+        // 매퍼 호출
+        return reviewMapper.selectMyPostList(userId);
+    }
 }

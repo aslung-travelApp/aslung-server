@@ -274,4 +274,21 @@
         </foreach>
     </insert>
 
+    <select id="selectMyPostList" parameterType="long" resultType="com.trip.aslung.review.model.dto.PostListDto">
+        SELECT
+            p.post_id AS postId,
+            p.title,
+            LEFT(p.content, 50) AS content,
+            p.thumbnail_url AS thumbnailUrl,
+            p.region_name AS regionName,
+            p.view_count AS viewCount,
+            p.like_count AS likeCount,
+            IFNULL(AVG(r.rating), 0) AS avgRating,
+            COUNT(r.review_id) AS reviewCount,
+            p.created_at AS createdAt
+        FROM posts p
+            LEFT JOIN reviews r ON p.post_id = r.post_id
+        WHERE p.user_id = #{userId}  GROUP BY p.post_id
+        ORDER BY p.created_at DESC
+    </select>
 </mapper>

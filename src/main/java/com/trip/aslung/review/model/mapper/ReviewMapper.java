@@ -80,4 +80,7 @@ public interface ReviewMapper {
 
     // [추가] 2. 장소별 리뷰 일괄 저장 (리스트 처리)
     void insertTripReviews(List<TripPostRegistDto.PlaceReviewDto> list);
+
+    // [추가] XML 쿼리 ID와 일치하는 메서드
+    List<PostListDto> selectMyPostList(Long userId);
 }

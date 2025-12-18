@@ -124,4 +124,13 @@ public class ReviewController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    // 내가 쓴 여행기 목록 조회
+    @GetMapping("/my")
+    public ResponseEntity<List<PostListDto>> getMyPostList(
+            @AuthenticationPrincipal Long userId // 로그인한 유저 ID (없으면 테스트용 1L 고정)
+    ) {
+        List<PostListDto> myPosts = reviewService.getMyPostList(userId);
+        return ResponseEntity.ok(myPosts);
+    }
 }
