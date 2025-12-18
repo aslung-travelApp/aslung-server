@@ -4,6 +4,7 @@ import com.trip.aslung.plan.model.dto.PlanDetailResponse;
 import com.trip.aslung.plan.model.mapper.PlanMapper;
 import com.trip.aslung.planMember.model.dto.InvitationResponse;
 import com.trip.aslung.planMember.model.dto.PlanMember;
+import com.trip.aslung.planMember.model.dto.PlanMemberResponse;
 import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,13 @@ public class PlanMemberServiceImpl implements PlanMemberService {
 
     private final PlanMemberMapper planMemberMapper;
     private final PlanMapper planMapper;
+
+    @Override
+    public List<PlanMemberResponse> getMember(Long userId, Long planId) {
+        PlanMember member = planMemberMapper.findByPlanIdAndUserId(userId, planId);
+        //if(member == null) throw new IllegalArgumentException("접근 권한 없습니다.");
+        return planMemberMapper.findMembersByPlanId(planId);
+    }
 
     @Override
     public void inviteMember(Long planId, Long ownerId, Long targetUserId) {

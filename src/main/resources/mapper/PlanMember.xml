@@ -65,4 +65,22 @@
         SET is_public = #{isPublic},
             updated_at = NOW()  WHERE plan_id = #{planId}
     </update>
+
+    <select id="findMembersByPlanId" resultType="com.trip.aslung.planMember.model.dto.PlanMemberResponse">
+        SELECT
+            pm.member_id        AS memberId,
+            pm.plan_id          AS planId,
+            pm.user_id          AS userId,
+            pm.role             AS role,
+            pm.status           AS status,
+            u.nickname          AS nickname,
+            u.profile_image_url AS profileImageUrl,
+            u.email             AS email
+        FROM plan_members pm
+                 JOIN users u ON pm.user_id = u.user_id
+        WHERE pm.plan_id = #{planId}
+        ORDER BY
+            CASE WHEN pm.role = 'OWNER' THEN 1 ELSE 2 END, -- 방장을 맨 위로
+            pm.joined_at ASC -- 먼저 들어온 순서대로
+    </select>
 </mapper>

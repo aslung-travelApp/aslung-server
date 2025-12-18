@@ -1,7 +1,10 @@
 package com.trip.aslung.plan.model.mapper;
 
+import com.trip.aslung.plan.model.dto.Place;
 import com.trip.aslung.plan.model.dto.PlanSchedule;
+import com.trip.aslung.plan.model.dto.ScheduleAddRequest;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -9,7 +12,7 @@ import java.util.List;
 public interface PlanScheduleMapper {
 
     PlanSchedule findById(Long scheduleId);
-    void createSchedule(PlanSchedule planSchedule);
+    void createSchedule(ScheduleAddRequest planSchedule);
     void updateSchedule(PlanSchedule planSchedule);
     void deleteSchedule(Long scheduleId);
     void pullScheduleOrders(Long planId, int dayNumber, int startOrder);
