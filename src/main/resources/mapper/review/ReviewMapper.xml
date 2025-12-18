@@ -71,7 +71,8 @@
             p.thumbnail_url AS thumbnailUrl,
             p.like_count AS likeCount,
             IFNULL(AVG(r.rating), 0) AS avgRating,
-            COUNT(r.review_id) AS reviewCount
+            COUNT(r.review_id) AS reviewCount,
+            p.region_name AS regionName
         FROM posts p
                  LEFT JOIN reviews r ON p.post_id = r.post_id
         GROUP BY p.post_id
