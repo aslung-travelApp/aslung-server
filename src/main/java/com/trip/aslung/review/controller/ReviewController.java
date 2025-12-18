@@ -135,7 +135,7 @@ public class ReviewController {
     }
 
     // 여행기 수정
-    @PutMapping("/{postId}")
+    @PutMapping("/posts/{postId}")
     public ResponseEntity<Void> updateReview(
             @PathVariable Long postId,
             @RequestBody ReviewUpdateDto requestDto,
