@@ -149,4 +149,30 @@ public class ReviewService {
         // 매퍼 호출
         return reviewMapper.selectMyPostList(userId);
     }
+
+    // [추가] 여행기 수정 비즈니스 로직
+    @Transactional
+    public void updateReview(Long userId, ReviewUpdateDto requestDto) {
+        // 1. 본인 확인 (이 글이 내 글인지?)
+        // (간단하게 구현하기 위해 Mapper에서 user_id 조건으로 검사하거나, 여기서 조회 후 비교)
+        // 여기서는 Update 쿼리에 userId 조건을 넣어 처리하겠습니다.
+
+        // 2. 게시글(Posts) 테이블 수정
+        int updatedRows = reviewMapper.updatePost(requestDto.getPostId(), userId, requestDto.getTitle(), requestDto.getContent());
+
+        if (updatedRows == 0) {
+            throw new RuntimeException("게시글을 찾을 수 없거나 권한이 없습니다.");
+        }
+
+        // 3. 장소별 리뷰(Reviews) 테이블 수정
+        // 리스트를 돌면서 하나씩 업데이트합니다.
+        for (ReviewUpdateDto.PlaceReviewUpdateDto reviewDto : requestDto.getPlaceReviews()) {
+            reviewMapper.updatePlaceReview(
+                    requestDto.getPostId(),
+                    reviewDto.getPlanScheduleId(),
+                    reviewDto.getRating(),
+                    reviewDto.getComment()
+            );
+        }
+    }
 }

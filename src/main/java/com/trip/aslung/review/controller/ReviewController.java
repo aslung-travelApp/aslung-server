@@ -133,4 +133,21 @@ public class ReviewController {
         List<PostListDto> myPosts = reviewService.getMyPostList(userId);
         return ResponseEntity.ok(myPosts);
     }
+
+    // 여행기 수정
+    @PutMapping("/posts/{postId}")
+    public ResponseEntity<Void> updateReview(
+            @PathVariable Long postId,
+            @RequestBody ReviewUpdateDto requestDto,
+            @AuthenticationPrincipal Long userId
+    ) {
+        if (userId == null) userId = 1L; // 테스트용
+
+        // URL의 postId를 DTO에 세팅 (안전장치)
+        requestDto.setPostId(postId);
+
+        reviewService.updateReview(userId, requestDto);
+
+        return ResponseEntity.ok().build();
+    }
 }

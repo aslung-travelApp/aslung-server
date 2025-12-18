@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# application.properties 무시 (보안 파일)
+application.properties
+src/main/resources/application.properties
+**/application.properties
