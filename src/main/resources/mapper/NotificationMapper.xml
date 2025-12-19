@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.trip.aslung.notification.model.mapper.NotificationMapper">
+
+    <insert id="insertNotification">
+        INSERT INTO notifications
+        (user_id, sender_id, notification_type, target_id, content, is_completed)
+        VALUES
+            (#{userId}, #{senderId}, #{notificationType}, #{targetId}, #{content}, #{isCompleted})
+    </insert>
+
+    <select id="selectMyNotifications" resultType="com.trip.aslung.notification.model.dto.NotificationDto">
+        SELECT
+            n.notification_id AS notificationId,
+            n.user_id AS userId,
+            n.sender_id AS senderId,
+
+            -- 보낸 사람 정보 (User 테이블 조인)
+            u.nickname AS senderNickname,
+            u.profile_image_url AS senderProfileImg,
+
+            n.notification_type AS notificationType,
+            n.target_id AS targetId,
+            n.content,
+            n.is_completed AS isCompleted,
+            n.is_read AS isRead,
+            n.created_at AS createdAt
+        FROM notifications n
+                 JOIN users u ON n.sender_id = u.user_id
+        WHERE n.user_id = #{userId}
+        ORDER BY n.created_at DESC
+    </select>
+
+    <update id="updateCompleteStatus">
+        UPDATE notifications
+        SET is_completed = true
+        WHERE notification_id = #{notificationId}
+    </update>
+
+</mapper>
