@@ -7,6 +7,7 @@
     <resultMap id="UserResultMap" type="com.trip.aslung.user.model.dto.User">
         <id property="userId" column="user_id" />
         <result property="email" column="email" />
+        <result property="password" column="password" />
         <result property="nickname" column="nickname" />
         <result property="profileImageUrl" column="profile_image_url" />
         <result property="oauthProvider" column="oauth_provider" />
@@ -20,26 +21,19 @@
             useGeneratedKeys="true" keyProperty="userId">
         INSERT INTO users (
             email,
-            nickname,
-            profile_image_url,
-            oauth_provider,
-            oauth_id,
-            created_at,
-            updated_at
+            password, nickname, profile_image_url,
+            oauth_provider,      oauth_id,
+            created_at,updated_at
         ) VALUES (
-                     #{email},
-                     #{nickname},
-                     #{profileImageUrl},
-                     #{oauthProvider},
-                     #{oauthId},
-                     NOW(),
-                     NOW()
-                 )
+            #{email}, #{password}, #{nickname}, #{profileImageUrl},
+            #{oauthProvider}, #{oauthId},
+             NOW(), NOW()
+        )
     </insert>
 
     <select id="findByEmail" parameterType="String" resultMap="UserResultMap">
         SELECT * FROM users
-        WHERE email = #{email}
+        WHERE email = #{email} AND deleted_at IS NULL
     </select>
 
     <select id="findByUserId" parameterType="Long" resultMap="UserResultMap">
