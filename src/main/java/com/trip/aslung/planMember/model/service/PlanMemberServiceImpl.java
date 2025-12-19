@@ -6,6 +6,8 @@ import com.trip.aslung.planMember.model.dto.InvitationResponse;
 import com.trip.aslung.planMember.model.dto.PlanMember;
 import com.trip.aslung.planMember.model.dto.PlanMemberResponse;
 import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
+import com.trip.aslung.notification.model.NotificationType;
+import com.trip.aslung.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ public class PlanMemberServiceImpl implements PlanMemberService {
 
     private final PlanMemberMapper planMemberMapper;
     private final PlanMapper planMapper;
+
+    private final NotificationService notificationService;
 
     @Override
     public List<PlanMemberResponse> getMember(Long userId, Long planId) {
@@ -53,6 +57,13 @@ public class PlanMemberServiceImpl implements PlanMemberService {
 
         planMemberMapper.insertPlanMember(newMember);
         log.info("초대 성공: planId={}, inviter={}, target={}", planId, ownerId, targetUserId);
+
+        // 알림 보내기 로직 추가
+        // 메시지: "님이 '부산 여행' 여행 계획에 초대했습니다."
+        String message = "님이 '" + plan.getTitle() + "' 여행 계획에 초대했습니다.";
+
+        // send(보낸사람ID, 받는사람ID, 알림타입, 참조ID(planId), 메시지)
+        notificationService.send(ownerId, targetUserId, NotificationType.PLAN_INVITE, planId, message);
     }
 
     @Override
@@ -65,6 +76,14 @@ public class PlanMemberServiceImpl implements PlanMemberService {
         }
 
         planMemberMapper.updateMemberStatus(planId, userId, "JOINED");
+
+        // ★ [4] (선택사항) 수락 시 방장에게 알림 보내기
+        PlanDetailResponse plan = planMapper.selectPlanDetail(planId);
+        if(plan != null) {
+            String msg = "님이 '" + plan.getTitle() + "' 초대를 수락했습니다.";
+            // 수락한 사람(userId) -> 방장(plan.getUserId())
+            notificationService.send(userId, plan.getOwnerId(), NotificationType.PLAN_ACCEPT, planId, msg);
+        }
     }
 
     @Override
