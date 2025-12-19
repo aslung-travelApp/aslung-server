@@ -12,5 +12,5 @@ public class PostListDto {
     private int viewCount;
     private int likeCount;
     private double avgRating;      // 평균 별점 (reviews 테이블에서 계산)
-    private int reviewCount;       // 리뷰 개수
+    private int commentCount;      // 댓글 수
 }
