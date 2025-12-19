@@ -150,4 +150,17 @@ public class ReviewController {
 
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/likes/me")
+    public ResponseEntity<List<PostListDto>> getMyLikedPostList(
+            @AuthenticationPrincipal Long userId
+            // 만약 @AuthenticationPrincipal 설정이 아직 안 되어 있다면
+            // @RequestParam(required = false, defaultValue = "1") Long userId 로 대체 가능
+    ) {
+        // (테스트용) 로그인 로직이 완벽하지 않을 때를 대비한 안전장치
+        if (userId == null) userId = 1L;
+
+        List<PostListDto> likedPosts = reviewService.getLikedPostList(userId);
+        return ResponseEntity.ok(likedPosts);
+    }
 }
