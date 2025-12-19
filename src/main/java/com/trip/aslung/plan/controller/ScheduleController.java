@@ -1,11 +1,11 @@
 package com.trip.aslung.plan.controller;
 
-import com.trip.aslung.plan.model.dto.PlanSchedule;
 import com.trip.aslung.plan.model.dto.ScheduleAddRequest;
 import com.trip.aslung.plan.model.dto.ScheduleMoveRequest;
 import com.trip.aslung.plan.model.dto.ScheduleUpdateRequest;
 import com.trip.aslung.plan.model.service.PlanScheduleService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/plans/{planId}/schedules")
 @RequiredArgsConstructor
+@Slf4j
 public class ScheduleController {
 
     private final PlanScheduleService planScheduleService;

@@ -14,9 +14,11 @@ import java.time.LocalDateTime;
 public class User {
     private Long userId;
     private String email;
+    private String password;
     private String nickname;
     private String profileImageUrl;
-    private String oauthProvider;
+    @Builder.Default
+    private String oauthProvider = "LOCAL";  // LOCAL, KAKAO
     private String oauthId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

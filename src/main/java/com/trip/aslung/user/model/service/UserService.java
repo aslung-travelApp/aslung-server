@@ -1,8 +1,6 @@
 package com.trip.aslung.user.model.service;
 
-import com.trip.aslung.user.model.dto.User;
-import com.trip.aslung.user.model.dto.UserStatsResponse;
-import com.trip.aslung.user.model.dto.UserUpdateRequest;
+import com.trip.aslung.user.model.dto.*;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
@@ -10,4 +8,6 @@ public interface UserService {
     User findByUserId(Long userId);
     void updateProfile(Long userId, UserUpdateRequest request, MultipartFile image);
     UserStatsResponse getUserStats(Long userId);
+    void  signUp(UserSignUpRequest request);
+    TokenResponse reissue(String refreshToken);
 }

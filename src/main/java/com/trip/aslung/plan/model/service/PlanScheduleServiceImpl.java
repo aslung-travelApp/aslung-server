@@ -113,6 +113,7 @@ public class PlanScheduleServiceImpl implements PlanScheduleService{
         PlanSchedule schedule = planScheduleMapper.findById(scheduleId);
 
         if (schedule == null || !schedule.getPlanId().equals(planId)) {
+            log.info("schedule id : {}, plan id : {}",schedule.getPlanId(), planId);
             throw new IllegalArgumentException("잘못된 스케줄입니다.");
         }
 
