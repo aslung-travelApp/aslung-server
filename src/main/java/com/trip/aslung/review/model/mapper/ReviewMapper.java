@@ -99,4 +99,7 @@ public interface ReviewMapper {
             @Param("rating") int rating,
             @Param("comment") String comment
     );
+
+    // [추가]
+    List<PostListDto> selectLikedPostList(Long userId);
 }

@@ -310,4 +310,23 @@
         WHERE post_id = #{postId}
           AND plan_schedule_id = #{planScheduleId}
     </update>
+
+    <select id="selectLikedPostList" resultType="com.trip.aslung.review.model.dto.PostListDto">
+        SELECT
+            p.post_id AS postId,
+            p.title,
+            p.content,
+            p.thumbnail_url AS thumbnailUrl,
+            pl.region_name AS regionName,  -- Plans 테이블 조인 필요
+            p.like_count AS likeCount,
+            IFNULL(AVG(r.rating), 0) AS avgRating,
+            COUNT(r.review_id) AS reviewCount
+        FROM post_likes l
+                 JOIN posts p ON l.post_id = p.post_id
+                 LEFT JOIN plans pl ON p.plan_id = pl.plan_id
+                 LEFT JOIN reviews r ON p.post_id = r.post_id
+        WHERE l.user_id = #{userId}   -- ★ 현재 로그인한 유저 ID
+        GROUP BY p.post_id
+        ORDER BY l.created_at DESC    -- 최근에 찜한 순서
+    </select>
 </mapper>

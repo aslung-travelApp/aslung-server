@@ -175,4 +175,10 @@ public class ReviewService {
             );
         }
     }
+
+    // [추가] 좋아요한 게시글 목록 가져오기
+    @Transactional
+    public List<PostListDto> getLikedPostList(Long userId) {
+        return reviewMapper.selectLikedPostList(userId);
+    }
 }
