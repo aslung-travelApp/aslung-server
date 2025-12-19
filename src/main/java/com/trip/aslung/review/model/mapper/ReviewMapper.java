@@ -101,5 +101,5 @@ public interface ReviewMapper {
     );
 
     // [추가]
-    List<PostListDto> selectLikedPostList(Long userId);
+    List<PostListDto> selectLikedPostList(@Param("userId") Long userId);
 }
