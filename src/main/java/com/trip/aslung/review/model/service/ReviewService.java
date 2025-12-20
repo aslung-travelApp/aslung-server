@@ -1,18 +1,24 @@
 package com.trip.aslung.review.model.service;
 
+import com.trip.aslung.notification.model.dto.NotificationDto;
+import com.trip.aslung.notification.model.mapper.NotificationMapper;
 import com.trip.aslung.review.model.dto.*;
 import com.trip.aslung.review.model.mapper.ReviewMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List; // [추가] List 사용을 위해 필요
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ReviewService {
 
     private final ReviewMapper reviewMapper;
+
+    private final NotificationMapper notificationMapper;
 
     // 기존: 리뷰 등록
     @Transactional
@@ -65,12 +71,40 @@ public class ReviewService {
         int count = reviewMapper.checkPostLike(postId, userId);
 
         if (count > 0) {
+            // 좋아요 취소 (알림 X)
             reviewMapper.deletePostLike(postId, userId);
             reviewMapper.decreaseLikeCount(postId);
             return false;
         } else {
+            // 좋아요 등록 (알림 O)
             reviewMapper.insertPostLike(postId, userId);
             reviewMapper.increaseLikeCount(postId);
+
+            // =========================================================
+            //  [수정됨] 알림 발송 로직
+            // =========================================================
+            try {
+                // 1. 방금 만든 메서드로 '작성자 ID'만 가볍게 조회!
+                Long writerId = reviewMapper.selectWriterId(postId);
+
+                // 2. 작성자가 존재하고, 본인이 쓴 글이 아닐 때만 알림 전송
+                if (writerId != null && !writerId.equals(userId)) {
+
+                    NotificationDto notification = new NotificationDto();
+                    notification.setUserId(writerId);        // 받는 사람 (작성자)
+                    notification.setSenderId(userId);        // 보낸 사람 (좋아요 누른 사람)
+                    notification.setNotificationType("POST_LIKE"); // 알림 타입
+                    notification.setTargetId(postId);        // 클릭 시 이동할 게시글 ID
+                    notification.setContent("님이 회원님의 여행기를 좋아합니다."); // 메시지
+
+                    // 3. DB 저장
+                    notificationMapper.insertNotification(notification);
+                }
+            } catch (Exception e) {
+                log.error("좋아요 알림 전송 실패: ", e);
+            }
+            // =========================================================
+
             return true;
         }
     }

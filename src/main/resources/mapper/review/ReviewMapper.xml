@@ -335,4 +335,10 @@
         WHERE l.user_id = #{userId}
         ORDER BY l.created_at DESC
     </select>
+
+    <select id="selectWriterId" resultType="long">
+        SELECT user_id
+        FROM posts
+        WHERE post_id = #{postId}
+    </select>
 </mapper>

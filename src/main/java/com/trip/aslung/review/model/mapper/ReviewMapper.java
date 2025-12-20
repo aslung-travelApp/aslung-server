@@ -102,4 +102,7 @@ public interface ReviewMapper {
 
     // [추가]
     List<PostListDto> selectLikedPostList(@Param("userId") Long userId);
+
+    // [추가] 게시글 작성자 ID 조회 (알림 발송용)
+    Long selectWriterId(Long postId);
 }
