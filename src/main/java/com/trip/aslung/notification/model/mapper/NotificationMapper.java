@@ -16,4 +16,7 @@ public interface NotificationMapper {
 
     // 초대 처리 완료 상태 변경
     void updateCompleteStatus(Long notificationId);
+
+    // 알림 읽음 처리
+    void readAllNotifications(Long userId);
 }

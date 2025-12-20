@@ -28,4 +28,11 @@ public class NotificationController {
         notificationService.completeNotification(notificationId);
         return ResponseEntity.ok().build();
     }
+
+    // [추가] 알림 전체 읽음 처리
+    @PatchMapping("/read-all")
+    public ResponseEntity<String> readAllNotifications(@RequestParam Long userId) {
+        notificationService.readAllNotifications(userId);
+        return ResponseEntity.ok("모든 알림 읽음 처리 완료");
+    }
 }
