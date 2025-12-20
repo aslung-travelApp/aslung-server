@@ -5,6 +5,7 @@ import com.trip.aslung.user.model.mapper.UserMapper;
 import com.trip.aslung.user.model.service.UserService;
 import com.trip.aslung.util.CookieUtil;
 import com.trip.aslung.util.JWTUtil;
+import com.trip.aslung.util.S3Uploader;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class UserController {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JWTUtil jwtUtil;
     private final CookieUtil cookieUtil;
+    private final S3Uploader s3Uploader;
     private final RedisTemplate<String, Object> redisTemplate;
 
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
@@ -171,5 +173,13 @@ public class UserController {
 
         TokenResponse tokens = userService.reissue(refreshToken);
         return ResponseEntity.ok(tokens);
+    }
+
+    @PostMapping("/imgUpload")
+    public ResponseEntity<String> imageUpload(
+        @RequestParam("image") MultipartFile image
+    ){
+        String profileImageUrl = s3Uploader.upload(image, "profile");
+        return ResponseEntity.ok(profileImageUrl);
     }
 }
