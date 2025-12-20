@@ -15,6 +15,6 @@ public interface PlanMapper {
     List<PlanSchedule> selectPlanSchedules(Long planId);
     void insertPlan(Plan plan);
     void updatePlan(Plan plan);
-    void deletePlan(Long planId);
+    void deletePlan(Long planId, Long userId);
     void updatePlanVisibility(Long planId, boolean isPublic);
 }
