@@ -45,4 +45,10 @@ public class NotificationService {
     public void completeNotification(Long notificationId) {
         notificationMapper.updateCompleteStatus(notificationId);
     }
+
+    //  알림 전체 읽음 처리
+    @Transactional
+    public void readAllNotifications(Long userId) {
+        notificationMapper.readAllNotifications(userId);
+    }
 }

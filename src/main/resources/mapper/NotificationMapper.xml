@@ -39,4 +39,10 @@
         WHERE notification_id = #{notificationId}
     </update>
 
+    <update id="readAllNotifications">
+        UPDATE notifications
+        SET is_read = true
+        WHERE user_id = #{userId}
+    </update>
+
 </mapper>
