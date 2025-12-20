@@ -65,13 +65,15 @@
             title,
             start_date,
             end_date,
-            is_public
+            is_public,
+            region_name
         ) VALUES (
                      #{userId},
                      #{title},
                      #{startDate},
                      #{endDate},
-                     #{isPublic}
+                     #{isPublic},
+                     #{regionName}
                  )
     </insert>
 

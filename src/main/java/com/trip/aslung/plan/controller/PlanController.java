@@ -63,6 +63,7 @@ public class PlanController {
             @AuthenticationPrincipal Long userId,
             @PathVariable(("planId")) Long planId
     ){
+        log.info("plan Id : {}", planId);
         planService.deletePlan(userId, planId);
         return ResponseEntity.ok().build();
     }
