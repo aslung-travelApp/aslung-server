@@ -341,4 +341,10 @@
         FROM posts
         WHERE post_id = #{postId}
     </select>
+
+    <select id="selectPostTitle" resultType="string">
+        SELECT title
+        FROM posts
+        WHERE post_id = #{postId}
+    </select>
 </mapper>

@@ -119,6 +119,45 @@ public class ReviewService {
     @Transactional
     public void registPostComment(PostCommentDto commentDto) {
         reviewMapper.insertPostComment(commentDto);
+
+        try {
+            Long postId = commentDto.getPostId();
+            Long commenterId = commentDto.getUserId();
+
+            Long writerId = reviewMapper.selectWriterId(postId);
+
+            String postTitle = reviewMapper.selectPostTitle(postId);
+            if(postTitle == null) postTitle = "여행기";
+
+            if (writerId != null && !writerId.equals(commenterId)) {
+
+                NotificationDto notification = new NotificationDto();
+                notification.setUserId(writerId);
+                notification.setSenderId(commenterId);
+
+                notification.setNotificationType("POST_COMMENT");
+
+                notification.setTargetId(postId);
+                // ★ 핵심: [메인 메시지] || [댓글 내용] 형태로 합쳐서 저장
+                // 예: "님이 회원님의 '부산 여행' 여행기에 댓글을 남겼습니다.||와 여기 진짜 좋네요!"
+                String message = "님이 회원님의 " + postTitle + "에 댓글을 남겼습니다.";
+                String preview = commentDto.getContent();
+
+                // 댓글이 너무 길면 20자 정도로 자르기
+                if(preview.length() > 20) {
+                    preview = preview.substring(0, 20) + "...";
+                }
+
+                notification.setContent(message + "||" + preview);
+
+                // 3. DB 저장
+                notificationMapper.insertNotification(notification);
+            }
+        } catch (Exception e) {
+            // 알림 전송 실패해도 댓글 등록은 유지되도록 예외 처리
+            log.error("댓글 알림 전송 실패: ", e);
+        }
+        // =========================================================
     }
 
     // 댓글 수정
