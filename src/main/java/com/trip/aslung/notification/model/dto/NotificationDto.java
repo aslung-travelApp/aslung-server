@@ -17,7 +17,7 @@ public class NotificationDto {
     private Long targetId;           // plan_id 또는 post_id
     private String content;          // 알림 메시지
 
-    private boolean isCompleted;     // 버튼 처리 여부 (초대장용)
+    private Integer isCompleted;     // 버튼 처리 여부 (초대장용)
     private boolean isRead;          // 읽음 여부
     private String createdAt;
 }

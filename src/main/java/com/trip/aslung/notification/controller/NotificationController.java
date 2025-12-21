@@ -23,10 +23,13 @@ public class NotificationController {
     }
 
     // (선택) 알림 처리 완료 API (프론트에서 수락/거절 버튼 누른 후 호출)
-    @PatchMapping("/{notificationId}/complete")
-    public ResponseEntity<Void> completeNotification(@PathVariable Long notificationId) {
-        notificationService.completeNotification(notificationId);
-        return ResponseEntity.ok().build();
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<String> completeNotification(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int code // 기본값 1(수락/완료)
+    ) {
+        notificationService.completeNotification(id, code);
+        return ResponseEntity.ok("알림 처리 완료");
     }
 
     // [추가] 알림 전체 읽음 처리
