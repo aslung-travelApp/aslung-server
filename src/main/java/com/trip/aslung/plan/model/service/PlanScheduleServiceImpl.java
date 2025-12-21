@@ -56,7 +56,7 @@ public class PlanScheduleServiceImpl implements PlanScheduleService{
                         .kakaoMapId(request.getKakaoPlaceId())
                         .name(request.getPlaceName())
                         .address(request.getAddress())
-                        .category(request.getCategory())
+                        .contentTypeId(request.getCategory())
                         .latitude(request.getLat())
                         .longitude(request.getLng())
                         .imageUrl(request.getImageUrl())
