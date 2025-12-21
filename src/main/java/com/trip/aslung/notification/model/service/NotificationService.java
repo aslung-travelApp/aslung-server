@@ -31,7 +31,11 @@ public class NotificationService {
         // "초대장(PLAN_INVITE)"만 처음에 미완료(false)
         // 나머지(댓글, 좋아요 등)는 버튼이 필요 없으니 처음부터 완료(true)
         boolean isCompleted = !type.equals(NotificationType.PLAN_INVITE);
-        dto.setCompleted(isCompleted);
+        if (type == NotificationType.PLAN_INVITE) {
+            dto.setIsCompleted(0); // 미완료 (버튼 보임)
+        } else {
+            dto.setIsCompleted(1); // 완료 (버튼 안 보임)
+        }
 
         notificationMapper.insertNotification(dto);
     }
@@ -42,8 +46,9 @@ public class NotificationService {
     }
 
     // 알림 처리 완료 (초대 수락/거절 시 호출)
-    public void completeNotification(Long notificationId) {
-        notificationMapper.updateCompleteStatus(notificationId);
+// 알림 처리 완료 (status: 1=수락, 2=거절)
+    public void completeNotification(Long notificationId, int code) {
+        notificationMapper.updateCompleteStatus(notificationId, code);
     }
 
     //  알림 전체 읽음 처리
