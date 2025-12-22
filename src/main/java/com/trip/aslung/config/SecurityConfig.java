@@ -54,7 +54,7 @@ public class SecurityConfig {
 
                 // 2. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/oauth2/**","/login/**","/api/v1/ws/**","/api/v1/user/signup", "/api/v1/user/login", "/api/v1/user/reissue", "/api/v1/user/imgUpload").permitAll()
+                        .requestMatchers("/oauth2/**","/login/**","/api/v1/ws/**","/api/v1/user/signup", "/api/v1/user/login", "/api/v1/user/reissue", "/api/v1/user/imgUpload", "/survey").permitAll()
                         .requestMatchers("/api/v1/user/**", "/api/v1/plans/**").authenticated()
                         .anyRequest().permitAll()
                 )
