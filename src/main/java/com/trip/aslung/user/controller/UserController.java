@@ -76,6 +76,7 @@ public class UserController {
         userService.signUp(request);
         return ResponseEntity.ok("회원가입이 성공적으로 완료되었습니다.");
     }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request, HttpServletResponse response) {
 

@@ -25,8 +25,8 @@
             oauth_provider,      oauth_id,
             created_at,updated_at
         ) VALUES (
-            #{email}, #{password}, #{nickname}, #{profileImageUrl},
-            #{oauthProvider}, #{oauthId},
+            #{email}, #{password}, #{nickname}, #{profileImageUrl, jdbcType=VARCHAR},
+            #{oauthProvider}, #{oauthId, jdbcType=VARCHAR},
              NOW(), NOW()
         )
     </insert>
