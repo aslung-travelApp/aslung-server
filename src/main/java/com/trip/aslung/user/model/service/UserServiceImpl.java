@@ -62,6 +62,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void signUp(UserSignUpRequest request) {
         // 1. 이메일 중복 체크
         User existingUser = userMapper.findByEmail(request.getEmail());
@@ -81,15 +82,21 @@ public class UserServiceImpl implements UserService {
         // 2. 비밀번호 암호화
         String encryptedPass = passwordEncoder.encode(request.getPassword());
 
+        // 프로밀 이미지 설정
+        String finalProfileUrl = request.getProfileImageUrl();
+
+        if (finalProfileUrl == null || finalProfileUrl.trim().isEmpty()) {
+            finalProfileUrl = "https://t1.kakaocdn.net/kakaofriend_ip/static/images/kakaoFriends/img_apeach.png";
+        }
         // 3. User 객체 생성
         User user = User.builder()
                 .email(request.getEmail())
                 .password(encryptedPass)
                 .nickname(request.getNickname())
-                .profileImageUrl(request.getProfileImageUrl())
+                .profileImageUrl(finalProfileUrl)
                 .oauthProvider("LOCAL")
                 .build();
-
+        System.out.println("======> DB 저장 직전 이미지 주소: " + user.getProfileImageUrl());
         userMapper.insertUser(user);
     }
 
