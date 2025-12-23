@@ -146,32 +146,43 @@ public class OpenAiService {
     // JSON 응답 해석기
     private List<AiPlaceDto> parseResponse(String jsonResponse, List<AiPlaceDto> candidates) {
         try {
+            // ★ 1. 전체 응답 로그 찍어보기 (서버 콘솔 확인용)
+            log.info("### GPT Raw Response: {}", jsonResponse);
+
             Map map = objectMapper.readValue(jsonResponse, Map.class);
             List choices = (List) map.get("choices");
             Map message = (Map) ((Map) choices.get(0)).get("message");
             String content = (String) message.get("content");
 
-            // 가끔 GPT가 ```json ... ``` 을 붙여서 줄 때가 있어서 제거함
+            // 마크다운 제거
             if (content.contains("```json")) {
                 content = content.replace("```json", "").replace("```", "");
             }
+
+            // ★ 2. 정제된 content 내용 확인
+            log.info("### Parsed Content: {}", content);
 
             Map contentMap = objectMapper.readValue(content, Map.class);
             List<Map<String, String>> recs = (List<Map<String, String>>) contentMap.get("recommendations");
 
             List<AiPlaceDto> result = new ArrayList<>();
             for (Map<String, String> r : recs) {
-                String id = r.get("id");
-                String reason = r.get("reason");
+                String id = String.valueOf(r.get("id")); // 숫자로 올 수도 있으니 문자열로 변환
 
-                log.info("GPT 응답 - ID: {}, Reason: {}", id, reason);
-                
-                // 후보군 리스트에서 ID가 같은 녀석을 찾아서 '이유'를 덮어씀
+                // ★ 3. GPT가 'reason' 말고 딴소리 할 경우 대비 (키 값 찾기)
+                String reason = r.get("reason");
+                if (reason == null) reason = r.get("description");
+                if (reason == null) reason = r.get("desc");
+                if (reason == null) reason = r.get("detail");
+                if (reason == null) reason = "AI 추천 사유를 불러오지 못했습니다.";
+
+                String finalReason = reason; // 람다식용 final 변수
+
                 candidates.stream()
                         .filter(c -> c.getId().equals(id))
                         .findFirst()
                         .ifPresent(place -> {
-                            place.setReason(reason);
+                            place.setReason(finalReason);
                             result.add(place);
                         });
             }
@@ -179,6 +190,7 @@ public class OpenAiService {
 
         } catch (Exception e) {
             log.error("JSON 파싱 에러: {}", e.getMessage());
+            e.printStackTrace(); // 에러 상세 내용 출력
             return new ArrayList<>();
         }
     }
