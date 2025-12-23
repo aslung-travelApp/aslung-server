@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   backend:
-    # build: .
-    container_name: thduss/backend-server
+    image: thduss/aslung-backend
+    container_name: backend-server
     expose:
       - "8080"
     depends_on:
