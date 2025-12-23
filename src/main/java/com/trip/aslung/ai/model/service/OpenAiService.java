@@ -84,39 +84,48 @@ public class OpenAiService {
         }
     }
 
-    // ✅ 2단계: 프롬프트 생성
+    // ✅ 2단계: 프롬프트 생성 (English Version)
     private String createPrompt(List<AiPlaceDto> candidates, AiRequestDto req, String weather, String dbContext) {
         StringBuilder sb = new StringBuilder();
 
-        // 상황 정보
-        sb.append("### [여행 상황] ###\n");
-        sb.append("- 날씨: ").append(weather).append("\n");
-        sb.append("- 동행자: ").append(req.getCompanion()).append("\n");
-        sb.append("- 스타일: ").append(req.getStyles()).append("\n");
-        sb.append("- 관심 키워드: ").append(req.getKeyword()).append("\n\n");
+        // 상황 정보 (Travel Context)
+        sb.append("### [Travel Context] ###\n");
+        sb.append("- Weather: ").append(weather).append("\n");
+        sb.append("- Companion: ").append(req.getCompanion()).append("\n");
+        sb.append("- Travel Style: ").append(req.getStyles()).append("\n");
+        sb.append("- Interest Keyword: ").append(req.getKeyword()).append("\n\n");
 
-        // RAG 정보 (우선순위 높음)
-        sb.append("### [공공데이터 핵심 정보 (우선 참고)] ###\n");
+        // RAG 정보 (Public Data Context)
+        sb.append("### [Key Public Data Context (Priority Reference)] ###\n");
         sb.append(dbContext).append("\n\n");
 
-        // 후보군 정보 (카카오)
-        sb.append("### [주변 후보 장소 목록] ###\n");
+        // 후보군 정보 (Candidate Places)
+        sb.append("### [Nearby Candidate Places] ###\n");
         for (AiPlaceDto p : candidates) {
-            sb.append(String.format("- ID: %s | 이름: %s | 카테고리: %s\n",
+            sb.append(String.format("- ID: %s | Name: %s | Category: %s\n",
                     p.getId(), p.getPlaceName(), p.getCategory()));
         }
 
-        // 지시사항
-        sb.append("\n### [지시사항] ###\n");
-        sb.append("당신은 전문 여행 가이드입니다. 위 [주변 후보 장소 목록] 중에서 사용자의 [여행 조건]에  가장 완벽하게 부합하는 장소 3곳을 엄선하세요.\n");
-        sb.append("- **중요**: [선호 여행 스타일]과 [동행자 유형]을 반드시 고려하여 선택해야 합니다.\n");
-        sb.append("1. '공공데이터 핵심 정보'와 '주변 후보 장소'를 비교 분석하세요.\n");
-        sb.append("2. 날씨와 스타일에 가장 잘 어울리는 장소를 선택하세요.\n");
-        sb.append("- 예: 날씨가 '비'라면 실내 위주로 추천하세요.\n");
-        sb.append("3. 선택한 장소에 대해 **왜 이 장소가 사용자의 스타일과 날씨에 딱 맞는지** 구체적인 이유(reason)를 '한국어'로 작성하세요.\n");
-        sb.append("4. CRITICAL: The key MUST be named 'reason'. Do NOT use 'description' or 'content'.\n");
-        sb.append("5. 결과는 반드시 아래 JSON 형식으로만 출력하세요. (Markdown 사용 금지)\n");
-        sb.append("형식: { \"recommendations\": [ { \"id\": \"(후보장소ID)\", \"reason\": \"(추천이유 - 한국어 2~3문장)\" } ] }");
+        // 지시사항 (Instructions)
+        sb.append("\n### [Instructions] ###\n");
+        sb.append("You are a professional travel guide. Select the 3 places that best match the user's [Travel Context] from the [Nearby Candidate Places] list above.\n");
+
+        // 중요 조건
+        sb.append("- **IMPORTANT**: You MUST consider the [Travel Style] and [Companion] type when making your selection.\n");
+
+        // 상세 단계
+        sb.append("1. Analyze and compare the 'Key Public Data Context' with the 'Nearby Candidate Places'.\n");
+        sb.append("2. Select places that best fit the current weather and style.\n");
+        sb.append("- Example: If the weather is 'Rain', recommend indoor activities.\n");
+
+        // ** 핵심: 출력 언어 지정 **
+        sb.append("3. For each selected place, write a specific 'reason' explaining **why this place fits the user's style and weather**.\n");
+        sb.append("   - **NOTE: The 'reason' value MUST be written in KOREAN.**\n");
+
+        // JSON 제약 조건
+        sb.append("4. CRITICAL: The JSON key for the explanation MUST be named 'reason'. Do NOT use 'description' or 'content'.\n");
+        sb.append("5. The output must be strictly in the following JSON format only. (Do NOT use Markdown blocks like ```json).\n");
+        sb.append("Format: { \"recommendations\": [ { \"id\": \"(Place ID)\", \"reason\": \"(Reason in Korean, 2~3 sentences)\" } ] }");
 
         return sb.toString();
     }
