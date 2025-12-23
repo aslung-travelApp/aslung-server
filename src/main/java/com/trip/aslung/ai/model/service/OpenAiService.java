@@ -11,7 +11,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -108,7 +107,11 @@ public class OpenAiService {
         sb.append("4. 결과는 반드시 아래 JSON 형식으로만 출력하세요. (Markdown 사용 금지)\n");
         sb.append("형식: { \"recommendations\": [ { \"id\": \"(후보장소ID)\", \"reason\": \"(추천이유 - 한국어 2~3문장)\" } ] }");
 
-        return sb.toString();
+            return parseResponse(response.getBody(), candidates);
+        } catch (Exception e) {
+            log.error("GMS 호출 실패: {}", e.getMessage());
+            return candidates.size() > 3 ? candidates.subList(0, 3) : candidates;
+        }
     }
 
     // ✅ 3단계: GMS 호출 및 파싱 (RestTemplate 사용)

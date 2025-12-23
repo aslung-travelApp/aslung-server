@@ -2,11 +2,13 @@ package com.trip.aslung.review.controller;
 
 import com.trip.aslung.review.model.dto.*;
 import com.trip.aslung.review.model.service.ReviewService;
+import com.trip.aslung.util.S3Uploader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -17,14 +19,15 @@ import java.util.Map;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final S3Uploader s3Uploader;
 
     @PostMapping
-    public ResponseEntity<?> createReview(@RequestBody ReviewRegistDto reviewDto) {
-        // TODO: 실제로는 SecurityContextHolder 등에서 로그인한 userId를 가져와야 함.
-        // 현재는 DB 테스트를 위해 넘어가는 값만 저장합니다.
-
+    public ResponseEntity<?> createReview(
+            @RequestBody ReviewRegistDto reviewDto,
+            @AuthenticationPrincipal Long userId
+    ) {
         try {
-            reviewService.registReview(reviewDto);
+            reviewService.registReview(userId, reviewDto);
             return new ResponseEntity<>(HttpStatus.CREATED);
         } catch (Exception e) {
             e.printStackTrace();
@@ -46,7 +49,7 @@ public class ReviewController {
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<?> removePost(
             @PathVariable("postId") Long postId,
-            @RequestParam("userId") Long userId //  누가 지우는지 확인
+            @AuthenticationPrincipal Long userId
     ) {
         reviewService.removePost(postId, userId);
         return ResponseEntity.ok().build();
@@ -111,10 +114,12 @@ public class ReviewController {
 
     // 여행기 장소별 리뷰 등록 API
     @PostMapping("/posts")
-    public ResponseEntity<?> registTripPost(@RequestBody TripPostRegistDto registDto) {
-        // 프론트에서 보낸 데이터가 잘 들어왔는지 로그 확인
+    public ResponseEntity<?> registTripPost(
+            @RequestBody TripPostRegistDto registDto,
+            @AuthenticationPrincipal Long userId
+    ) {
         System.out.println("여행기 등록 요청: " + registDto);
-        registDto.setUserId(1L);
+        registDto.setUserId(userId);
         try {
             // Service 호출
             reviewService.registTripPost(registDto);
@@ -128,7 +133,7 @@ public class ReviewController {
     // 내가 쓴 여행기 목록 조회
     @GetMapping("/my")
     public ResponseEntity<List<PostListDto>> getMyPostList(
-            @AuthenticationPrincipal Long userId // 로그인한 유저 ID (없으면 테스트용 1L 고정)
+            @AuthenticationPrincipal Long userId
     ) {
         List<PostListDto> myPosts = reviewService.getMyPostList(userId);
         return ResponseEntity.ok(myPosts);
@@ -141,11 +146,7 @@ public class ReviewController {
             @RequestBody ReviewUpdateDto requestDto,
             @AuthenticationPrincipal Long userId
     ) {
-        if (userId == null) userId = 1L; // 테스트용
-
-        // URL의 postId를 DTO에 세팅 (안전장치)
         requestDto.setPostId(postId);
-
         reviewService.updateReview(userId, requestDto);
 
         return ResponseEntity.ok().build();
@@ -154,12 +155,7 @@ public class ReviewController {
     @GetMapping("/likes/me")
     public ResponseEntity<List<PostListDto>> getMyLikedPostList(
             @AuthenticationPrincipal Long userId
-            // 만약 @AuthenticationPrincipal 설정이 아직 안 되어 있다면
-            // @RequestParam(required = false, defaultValue = "1") Long userId 로 대체 가능
     ) {
-        // (테스트용) 로그인 로직이 완벽하지 않을 때를 대비한 안전장치
-        if (userId == null) userId = 1L;
-
         List<PostListDto> likedPosts = reviewService.getLikedPostList(userId);
         return ResponseEntity.ok(likedPosts);
     }

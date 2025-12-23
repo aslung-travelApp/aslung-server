@@ -190,4 +190,14 @@ public class UserController {
         String profileImageUrl = s3Uploader.upload(image, "profile");
         return ResponseEntity.ok(profileImageUrl);
     }
+
+    // UserController 혹은 ReviewController에 추가
+    @PostMapping("/review/imgUpload")
+    public ResponseEntity<String> thumbnailUpload(
+            @RequestParam("image") MultipartFile image
+    ){
+        // "reviews" 폴더에 강제로 저장
+        String reviewImageUrl = s3Uploader.upload(image, "thumbnail");
+        return ResponseEntity.ok(reviewImageUrl);
+    }
 }
