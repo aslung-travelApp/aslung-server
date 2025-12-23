@@ -35,7 +35,10 @@ public class ReviewController {
         }
     }
     @GetMapping("/plans/{planId}")
-    public ResponseEntity<?> getReviewTargets(@PathVariable Long planId) {
+    public ResponseEntity<?> getReviewTargets(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long planId
+    ) {
         try {
             List<ReviewTargetDto> targets = reviewService.getReviewTargets(planId);
             return ResponseEntity.ok(targets);
