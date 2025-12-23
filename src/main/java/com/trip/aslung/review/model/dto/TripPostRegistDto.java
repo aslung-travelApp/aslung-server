@@ -11,6 +11,7 @@ public class TripPostRegistDto {
     private String title;       // 여행기 제목
     private String content;     // 여행기 전체 총평(본문)
     private String regionName;  // 지역명
+    private String thumbnailUrl; //썸네일
 
     // 각 장소별 리뷰 리스트
     private List<PlaceReviewDto> placeReviews;

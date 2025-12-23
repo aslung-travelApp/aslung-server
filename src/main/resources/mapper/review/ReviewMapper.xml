@@ -246,7 +246,7 @@
                                                            #{title},
                                                            #{content},
                                                            #{regionName},
-                                                           'https://dummyimage.com/600x400/000/fff&amp;text=Trip',
+                                                           #{thumbnailUrl},
                                                            0,
                                                            0,
                                                            NOW(),           NOW()            )

@@ -2,11 +2,13 @@ package com.trip.aslung.review.controller;
 
 import com.trip.aslung.review.model.dto.*;
 import com.trip.aslung.review.model.service.ReviewService;
+import com.trip.aslung.util.S3Uploader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ import java.util.Map;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final S3Uploader s3Uploader;
 
     @PostMapping
     public ResponseEntity<?> createReview(@RequestBody ReviewRegistDto reviewDto) {
