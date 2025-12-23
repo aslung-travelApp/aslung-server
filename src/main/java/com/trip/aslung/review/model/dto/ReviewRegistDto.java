@@ -9,5 +9,5 @@ public class ReviewRegistDto {
     private Long placeId;         // 장소 ID
     private String comment;       // 리뷰 내용
     private int rating;           // 별점 (1~5)
-    // private Long userId;       // Controller에서 세션/토큰으로 채워넣을 예정
+    private Long userId;       // 유저 ID
 }
