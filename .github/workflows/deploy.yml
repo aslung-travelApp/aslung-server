@@ -42,7 +42,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/aslung-server  # docker-compose.yml이 있는 위치
+            cd ~/aslung-server 
             docker-compose pull
             docker-compose up -d
             docker image prune -f  # 사용하지 않는 예전 이미지 삭제
