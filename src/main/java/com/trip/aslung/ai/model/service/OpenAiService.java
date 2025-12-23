@@ -164,6 +164,8 @@ public class OpenAiService {
                 String id = r.get("id");
                 String reason = r.get("reason");
 
+                log.info("GPT 응답 - ID: {}, Reason: {}", id, reason);
+                
                 // 후보군 리스트에서 ID가 같은 녀석을 찾아서 '이유'를 덮어씀
                 candidates.stream()
                         .filter(c -> c.getId().equals(id))
