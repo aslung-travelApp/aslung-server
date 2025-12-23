@@ -15,6 +15,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 @Configuration
@@ -34,7 +35,10 @@ public class SecurityConfig {
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                         CorsConfiguration config = new CorsConfiguration();
-                        config.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
+                        config.setAllowedOrigins(Arrays.asList(
+                                "http://localhost:5173",
+                                "https://aslung.site"
+                        ));
                         config.setAllowedMethods(Collections.singletonList("*"));
                         config.setAllowCredentials(true);
                         config.setAllowedHeaders(Collections.singletonList("*"));
@@ -50,7 +54,7 @@ public class SecurityConfig {
 
                 // 2. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/user/signup", "/api/v1/user/login", "/api/v1/user/reissue", "/api/v1/user/imgUpload").permitAll()
+                        .requestMatchers("/api/v1/user/imgUpload","/oauth2/**","/login/**","/api/v1/ws/**","/api/v1/user/signup", "/api/v1/user/login", "/api/v1/user/reissue", "/api/v1/user/imgUpload", "/survey").permitAll()
                         .requestMatchers("/api/v1/user/**", "/api/v1/plans/**").authenticated()
                         .anyRequest().permitAll()
                 )

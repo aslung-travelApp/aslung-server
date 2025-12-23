@@ -2,6 +2,7 @@ package com.trip.aslung.user.controller;
 
 import com.trip.aslung.user.model.dto.*;
 import com.trip.aslung.user.model.mapper.UserMapper;
+import com.trip.aslung.user.model.mapper.UserPreferencesMapper;
 import com.trip.aslung.user.model.service.UserService;
 import com.trip.aslung.util.CookieUtil;
 import com.trip.aslung.util.JWTUtil;
@@ -40,6 +41,7 @@ public class UserController {
     private final CookieUtil cookieUtil;
     private final S3Uploader s3Uploader;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final UserPreferencesMapper userPreferencesMapper;
 
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoClientId;
@@ -74,6 +76,7 @@ public class UserController {
         userService.signUp(request);
         return ResponseEntity.ok("회원가입이 성공적으로 완료되었습니다.");
     }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request, HttpServletResponse response) {
 
@@ -127,10 +130,15 @@ public class UserController {
         // 4. 리프레시 토큰 쿠키에 저장
         cookieUtil.addCookie(response, "refresh_token", refreshToken, 7 * 24 * 60 * 60);
 
+        // 5. 선호도 조사 여부 확인
+        boolean hasPreferences = userPreferencesMapper.existsByUserId(user.getUserId());
+
         TokenResponse tokens = TokenResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken("null")
+                .hasPreferences(hasPreferences)
                 .build();
+        
         return ResponseEntity.ok(tokens);
     }
 

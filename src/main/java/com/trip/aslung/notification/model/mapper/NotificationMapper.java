@@ -2,6 +2,7 @@ package com.trip.aslung.notification.model.mapper;
 
 import com.trip.aslung.notification.model.dto.NotificationDto;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -15,5 +16,8 @@ public interface NotificationMapper {
     List<NotificationDto> selectMyNotifications(Long userId);
 
     // 초대 처리 완료 상태 변경
-    void updateCompleteStatus(Long notificationId);
+    void updateCompleteStatus(@Param("notificationId") Long notificationId, @Param("code") int code);
+
+    // 알림 읽음 처리
+    void readAllNotifications(Long userId);
 }

@@ -67,11 +67,12 @@ public class PlanServiceImpl implements PlanService {
         // 1. 플랜 생성
         Plan plan = new Plan();
         plan.setUserId(userId);
+        String regionsStr = "";
         if (request.getRegions() != null && !request.getRegions().isEmpty()) {
-            String regionsStr = String.join(",", request.getRegions());
-            plan.setRegionName(regionsStr);
+            regionsStr = String.join(",", request.getRegions());
         }
-        plan.setTitle(request.getRegions() + " 여행");
+        plan.setRegionName(regionsStr);
+        plan.setTitle(regionsStr + " 여행");
         plan.setStartDate(request.getStartDate());
         plan.setEndDate(request.getEndDate());
         plan.setIsPublic(request.getIsPublic() != null ? request.getIsPublic() : false);
@@ -136,7 +137,7 @@ public class PlanServiceImpl implements PlanService {
         }
 
         // 소프트 삭제 => 여행기 삭제 로직 필요
-        planMapper.deletePlan(planId);
+        planMapper.deletePlan(planId, userId);
     }
 
     @Override

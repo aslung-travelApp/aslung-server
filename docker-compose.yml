@@ -1,13 +1,43 @@
 version: '3.8'
+
 services:
+  backend:
+    image: thduss/aslung-backend
+    container_name: backend-server
+    expose:
+      - "8080"
+    depends_on:
+      - redis
+    environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+    volumes:
+      - ./application.properties:/app/application.properties
   redis:
-    image: redis:latest
+    image: redis:alpine
     container_name: aslung-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     restart: always
-
+  nginx:
+      image: nginx:alpine
+      container_name: nginx
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./nginx/conf.d:/etc/nginx/conf.d
+        - ./certbot/conf:/etc/letsencrypt
+        - ./certbot/www:/var/www/certbot
+      depends_on:
+        - backend
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
 volumes:
   redis_data:

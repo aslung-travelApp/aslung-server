@@ -7,7 +7,7 @@ import com.trip.aslung.planMember.model.dto.PlanMember;
 import com.trip.aslung.planMember.model.dto.PlanMemberResponse;
 import com.trip.aslung.planMember.model.mapper.PlanMemberMapper;
 import com.trip.aslung.notification.model.NotificationType;
-import com.trip.aslung.notification.service.NotificationService;
+import com.trip.aslung.notification.model.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

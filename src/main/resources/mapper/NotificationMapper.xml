@@ -35,8 +35,16 @@
 
     <update id="updateCompleteStatus">
         UPDATE notifications
-        SET is_completed = true
+        SET is_completed = #{code},
+            is_read = true
         WHERE notification_id = #{notificationId}
     </update>
+
+    <update id="readAllNotifications">
+        UPDATE notifications
+        SET is_read = true
+        WHERE user_id = #{userId}
+            AND notification_type != 'PLAN_INVITE'
+            AND is_read = false        </update>
 
 </mapper>
