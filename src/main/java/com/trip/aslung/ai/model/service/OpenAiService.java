@@ -2,6 +2,7 @@ package com.trip.aslung.ai.model.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trip.aslung.ai.model.dto.AiPlaceDto;
+import com.trip.aslung.ai.model.dto.AiRequestDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,6 +1,7 @@
 package com.trip.aslung.ai.controller;
 
 import com.trip.aslung.ai.model.dto.AiPlaceDto;
+import com.trip.aslung.ai.model.dto.AiRequestDto;
 import com.trip.aslung.ai.model.service.KakaoService;
 import com.trip.aslung.ai.model.service.OpenAiService;
 import com.trip.aslung.ai.model.service.WeatherService;
