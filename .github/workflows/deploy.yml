@@ -45,5 +45,5 @@ jobs:
             cd ~/aslung-server 
             docker-compose pull
             docker-compose down
-            docker-compose up -d
-            docker image prune -f  # 사용하지 않는 예전 이미지 삭제
+            docker-compose up -d --force-recreate
+            docker image prune -f 
