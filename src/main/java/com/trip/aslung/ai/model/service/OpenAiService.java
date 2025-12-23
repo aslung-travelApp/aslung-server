@@ -143,7 +143,7 @@ public class OpenAiService {
         }
     }
 
-    // JSON 응답 해석기
+    // JSON 응답 해석기(수정)
     private List<AiPlaceDto> parseResponse(String jsonResponse, List<AiPlaceDto> candidates) {
         try {
             // ★ 1. 전체 응답 로그 찍어보기 (서버 콘솔 확인용)
