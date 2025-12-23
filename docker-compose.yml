@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build: .
+    # build: .
     container_name: backend-server
     expose:
       - "8080"
