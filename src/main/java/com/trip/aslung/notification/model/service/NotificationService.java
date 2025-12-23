@@ -1,4 +1,4 @@
-package com.trip.aslung.notification.service;
+package com.trip.aslung.notification.model.service;
 
 import com.trip.aslung.notification.model.NotificationType;
 import com.trip.aslung.notification.model.dto.NotificationDto;

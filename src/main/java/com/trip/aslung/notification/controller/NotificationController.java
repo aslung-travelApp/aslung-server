@@ -1,9 +1,10 @@
 package com.trip.aslung.notification.controller;
 
 import com.trip.aslung.notification.model.dto.NotificationDto;
-import com.trip.aslung.notification.service.NotificationService;
+import com.trip.aslung.notification.model.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,7 +19,9 @@ public class NotificationController {
     // 내 알림 목록 조회
     // (보안을 위해 @AuthenticationPrincipal 등을 사용하는 것을 권장하지만, 일단 요청대로 작성)
     @GetMapping("")
-    public ResponseEntity<List<NotificationDto>> getMyNotifications(@RequestParam("userId") Long userId) {
+    public ResponseEntity<List<NotificationDto>> getMyNotifications(
+            @AuthenticationPrincipal Long userId
+    ) {
         return ResponseEntity.ok(notificationService.getMyNotifications(userId));
     }
 
@@ -34,7 +37,9 @@ public class NotificationController {
 
     // [추가] 알림 전체 읽음 처리
     @PatchMapping("/read-all")
-    public ResponseEntity<String> readAllNotifications(@RequestParam Long userId) {
+    public ResponseEntity<String> readAllNotifications(
+            @AuthenticationPrincipal Long userId
+    ) {
         notificationService.readAllNotifications(userId);
         return ResponseEntity.ok("모든 알림 읽음 처리 완료");
     }
