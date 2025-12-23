@@ -44,5 +44,6 @@ jobs:
           script: |
             cd ~/aslung-server 
             docker-compose pull
+            docker-compose down
             docker-compose up -d
             docker image prune -f  # 사용하지 않는 예전 이미지 삭제
