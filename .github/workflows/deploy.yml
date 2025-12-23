@@ -43,6 +43,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/aslung-server 
+            git pull
             docker-compose pull
             docker-compose down
             docker-compose up -d --force-recreate
