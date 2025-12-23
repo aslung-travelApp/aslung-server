@@ -22,7 +22,8 @@ public class ReviewService {
 
     // 기존: 리뷰 등록
     @Transactional
-    public void registReview(ReviewRegistDto reviewDto) {
+    public void registReview(Long userId, ReviewRegistDto reviewDto) {
+        reviewDto.setUserId(userId);
         reviewMapper.insertReview(reviewDto);
     }
 
