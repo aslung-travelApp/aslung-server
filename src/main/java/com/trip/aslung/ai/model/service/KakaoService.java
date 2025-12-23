@@ -2,6 +2,7 @@ package com.trip.aslung.ai.model.service;
 
 import com.trip.aslung.ai.model.dto.AiPlaceDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KakaoService {
 
     @Value("${kakao.api.key}")
@@ -21,6 +23,10 @@ public class KakaoService {
     private final RestTemplate restTemplate;
 
     public List<AiPlaceDto> searchCandidates(String x, String y, String categoryCode) {
+
+        // 1. 로그 확인 (X, Y가 바뀌지 않았는지 꼭 확인하세요!)
+        log.info("📢 [카카오 검색 요청] X(경도): {}, Y(위도): {}, 카테고리: {}", x, y, categoryCode);
+
         String url = "https://dapi.kakao.com/v2/local/search/category.json";
 
         HttpHeaders headers = new HttpHeaders();
