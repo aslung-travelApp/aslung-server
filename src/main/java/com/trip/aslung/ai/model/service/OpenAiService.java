@@ -2,7 +2,6 @@ package com.trip.aslung.ai.model.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trip.aslung.ai.model.dto.AiPlaceDto;
-import com.trip.aslung.ai.model.dto.AiRequestDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -107,11 +107,7 @@ public class OpenAiService {
         sb.append("4. 결과는 반드시 아래 JSON 형식으로만 출력하세요. (Markdown 사용 금지)\n");
         sb.append("형식: { \"recommendations\": [ { \"id\": \"(후보장소ID)\", \"reason\": \"(추천이유 - 한국어 2~3문장)\" } ] }");
 
-            return parseResponse(response.getBody(), candidates);
-        } catch (Exception e) {
-            log.error("GMS 호출 실패: {}", e.getMessage());
-            return candidates.size() > 3 ? candidates.subList(0, 3) : candidates;
-        }
+        return sb.toString();
     }
 
     // ✅ 3단계: GMS 호출 및 파싱 (RestTemplate 사용)
@@ -146,22 +142,15 @@ public class OpenAiService {
         }
     }
 
-    private List<AiPlaceDto> parseResponse(String json, List<AiPlaceDto> candidates) {
+    // JSON 응답 해석기
+    private List<AiPlaceDto> parseResponse(String jsonResponse, List<AiPlaceDto> candidates) {
         try {
-            // 1. 전체 JSON을 Map으로 변환
-            Map<String, Object> map = objectMapper.readValue(json, Map.class);
-
-            // 2. "choices"를 꺼낼 때, List<Map>이라고 확실하게 명시!
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) map.get("choices");
-
-            // 3. 첫 번째 요소(get(0))를 가져와서, "message"를 꺼냄 (여기가 에러 났던 곳 해결!)
-            Map<String, Object> firstChoice = choices.get(0);
-            Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
-
-            // 4. 최종적으로 content 꺼내기
+            Map map = objectMapper.readValue(jsonResponse, Map.class);
+            List choices = (List) map.get("choices");
+            Map message = (Map) ((Map) choices.get(0)).get("message");
             String content = (String) message.get("content");
 
-            // --- 마크다운 제거 및 나머지 로직은 동일 ---
+            // 가끔 GPT가 ```json ... ``` 을 붙여서 줄 때가 있어서 제거함
             if (content.contains("```json")) {
                 content = content.replace("```json", "").replace("```", "");
             }
@@ -174,6 +163,7 @@ public class OpenAiService {
                 String id = r.get("id");
                 String reason = r.get("reason");
 
+                // 후보군 리스트에서 ID가 같은 녀석을 찾아서 '이유'를 덮어씀
                 candidates.stream()
                         .filter(c -> c.getId().equals(id))
                         .findFirst()

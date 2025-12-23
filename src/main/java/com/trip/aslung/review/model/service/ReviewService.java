@@ -28,7 +28,6 @@ public class ReviewService {
     }
 
     // [추가] 특정 플랜의 리뷰 대상(장소) 목록 조회
-    // 조회 전용이므로 readOnly = true를 주면 성능 최적화에 도움이 됩니다.
     @Transactional(readOnly = true)
     public List<ReviewTargetDto> getReviewTargets(Long planId) {
         return reviewMapper.selectReviewTargets(planId);
