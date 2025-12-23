@@ -41,6 +41,14 @@ public class OpenAiService {
      */
     public List<AiPlaceDto> getRecommendation(List<AiPlaceDto> candidates, AiRequestDto request, String weather) {
 
+        // 요청 데이터가 제대로 들어왔는지 로그 확인
+        log.info("=== AI 추천 요청 데이터 ===");
+        log.info("날씨: {}", weather);
+        log.info("동행자: {}", request.getCompanion());
+        log.info("스타일: {}", request.getStyles());
+        log.info("키워드: {}", request.getKeyword());
+        log.info("후보군 개수: {}", candidates.size());
+
         // 1. [RAG] 5만 개 데이터 중 키워드와 관련된 내용 찾기 (SQL LIKE)
         String dbContext = searchDatabase(request.getKeyword());
 
