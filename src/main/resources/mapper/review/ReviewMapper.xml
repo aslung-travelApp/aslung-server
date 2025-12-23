@@ -113,11 +113,13 @@
             ps.day_number AS dayNumber,
             ps.order_index AS orderIndex,
             pl.name AS placeName,
-            pl.category,
+            ct.content_type_name AS category, -- 기존 pl.category 대신 테이블 조인 후 이름 추출
             r.comment AS memo,
             IFNULL(r.rating, 0) AS rating
         FROM plan_schedules ps
                  JOIN places pl ON ps.place_id = pl.place_id
+            -- 카테고리 이름을 가져오기 위한 JOIN 추가
+                 JOIN contenttypes ct ON pl.content_type_id = ct.content_type_id
                  LEFT JOIN reviews r ON ps.schedule_id = r.plan_schedule_id
         WHERE ps.plan_id = #{planId}
         ORDER BY ps.day_number, ps.order_index
