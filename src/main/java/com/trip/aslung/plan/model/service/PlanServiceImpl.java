@@ -166,7 +166,7 @@ public class PlanServiceImpl implements PlanService {
         newPlan.setRegionName(sourcePlanRes.getRegionName());
         newPlan.setStartDate(sourcePlanRes.getStartDate());
         newPlan.setEndDate(sourcePlanRes.getEndDate());
-        newPlan.setIsPublic(0); // 비공개 설정
+        newPlan.setIsPublic(false); // 비공개 설정
 
         // 3. 새 계획 DB 저장 (insertPlan 사용)
         planMapper.insertPlan(newPlan);
