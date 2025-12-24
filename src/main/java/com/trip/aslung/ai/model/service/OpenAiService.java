@@ -278,17 +278,16 @@ public class OpenAiService {
         if (sentence == null || sentence.length() < 2) return sentence;
 
         try {
-            // 프롬프트: "이 문장에서 DB 검색에 사용할 핵심 명사 딱 1개만 한국어로 뽑아줘"
-            String prompt = "Extract only ONE core search keyword (noun) from the following sentence to search in a database place names or descriptions.\n" +
-                    "Sentence: \"" + sentence + "\"\n" +
-                    "Output ONLY the word in Korean. Do not add any explanation.";
+            // [수정된 프롬프트] 추상적인 표현을 구체적인 '장소 유형'으로 변환하도록 지시
+            String prompt = "Analyze the user's travel request and convert it into a single concrete searchable place type (noun) in Korean.\n" +
+                    "Examples:\n" +
+                    "- 'It's too cold, I want to go inside' -> '카페' or '박물관' or '미술관'\n" +
+                    "- 'somewhere quiet' -> '공원' or '도서관'\n" +
+                    "- 'I want to eat something' -> '맛집'\n" +
+                    "User Request: \"" + sentence + "\"\n" +
+                    "Output ONLY the single best keyword in Korean. Do not add any explanation.";
 
             Map<String, Object> body = new HashMap<>();
-            body.put("model", modelName);
-            body.put("messages", List.of(
-                    Map.of("role", "system", "content", "You are a search keyword extractor. Output only the keyword."),
-                    Map.of("role", "user", "content", prompt)
-            ));
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
