@@ -22,4 +22,5 @@ public interface PlanScheduleMapper {
     void updateScheduleDayAndOrder(PlanSchedule schedule);
     int selectMaxOrderIndex(Long planId, int dayNumber);
     List<PlanSchedule> selectSchedulesByPlanId(Long planId);
+    void insertSchedule(PlanSchedule planSchedule);
 }

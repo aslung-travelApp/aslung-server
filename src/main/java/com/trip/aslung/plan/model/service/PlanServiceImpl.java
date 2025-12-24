@@ -148,4 +148,44 @@ public class PlanServiceImpl implements PlanService {
         if(!plan.getOwnerId().equals(userId)) throw new SecurityException("공개 설정 변경은 방장만 가능합니다.");
         planMapper.updatePlanVisibility(planId, isPublic);
     }
+
+    @Override
+    @Transactional
+    public long copyPlan(Long sourcePlanId, Long userId) {
+        // 1. 원본 계획 정보 조회 (selectPlanDetail 사용)
+        PlanDetailResponse sourcePlanRes = planMapper.selectPlanDetail(sourcePlanId);
+
+        if (sourcePlanRes == null) {
+            throw new RuntimeException("원본 여행 일정을 찾을 수 없습니다.");
+        }
+
+        // 2. 새로운 Plan 객체 생성 및 데이터 복사
+        Plan newPlan = new Plan();
+        newPlan.setUserId(userId); // 내 아이디
+        newPlan.setTitle(sourcePlanRes.getTitle() + " (가져옴)"); // 제목
+        newPlan.setRegionName(sourcePlanRes.getRegionName());
+        newPlan.setStartDate(sourcePlanRes.getStartDate());
+        newPlan.setEndDate(sourcePlanRes.getEndDate());
+        newPlan.setIsPublic(0); // 비공개 설정
+
+        // 3. 새 계획 DB 저장 (insertPlan 사용)
+        planMapper.insertPlan(newPlan);
+        Long newPlanId = newPlan.getPlanId();
+
+        // 4. 원본 스케줄 조회 (selectSchedulesByPlanId 사용)
+        List<PlanSchedule> sourceSchedules = planScheduleMapper.selectSchedulesByPlanId(sourcePlanId);
+
+        // 5. 스케줄 복사 저장
+        if (sourceSchedules != null) {
+            for (PlanSchedule schedule : sourceSchedules) {
+                schedule.setPlanId(newPlanId); // 새 ID로 교체
+                schedule.setScheduleId(null);  // 새 생성을 위해 null 처리
+
+                // [중요] 새로 추가한 insertSchedule 호출
+                planScheduleMapper.insertSchedule(schedule);
+            }
+        }
+
+        return newPlanId;
+    }
 }

@@ -15,4 +15,7 @@ public interface PlanService {
     void deletePlan(Long userId, Long planId);
 
     void updateVisibility(Long planId, Long userId, boolean isPublic);
+
+    // [추가] 플랜 복사 메서드 정의
+    long copyPlan(Long sourcePlanId, Long userId);
 }

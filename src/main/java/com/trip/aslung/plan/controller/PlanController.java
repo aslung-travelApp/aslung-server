@@ -6,6 +6,7 @@ import com.trip.aslung.planMember.model.dto.InvitationResponse;
 import com.trip.aslung.planMember.model.service.PlanMemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -87,5 +88,16 @@ public class PlanController {
         log.info("로그인 사용자 ID" + userId);
         List<InvitationResponse> invitations = planMemberService.getMyInvitations(userId);
         return ResponseEntity.ok(invitations);
+    }
+
+    // 여행 일정 가져오기
+    @PostMapping("/{planId}/copy")
+    public ResponseEntity<Long> copyPlan(
+            @PathVariable("planId") Long sourcePlanId,
+            @RequestParam("userId") Long userId
+    ) {
+        // 서비스에서 복사 수행 후 새로 생성된 planId 반환
+        Long newPlanId = planService.copyPlan(sourcePlanId, userId);
+        return new ResponseEntity<>(newPlanId, HttpStatus.CREATED);
     }
 }
