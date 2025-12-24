@@ -55,7 +55,6 @@ public class ReviewService {
         if (post == null) return null;
 
         if (post.getPlanId() != null) {
-            // [확인] 여기서 수정된 XML 쿼리가 실행되어 리뷰 코멘트가 memo로 들어감
             post.setSchedules(reviewMapper.selectPostSchedules(post.getPlanId(), postId));
         }
 

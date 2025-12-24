@@ -116,9 +116,10 @@
             p.name AS placeName,
             ps.day_number AS dayNumber,
             ps.order_index AS orderIndex,
-            IFNULL(r.comment, ps.memo) AS memo,
             r.comment AS comment,
             IFNULL(r.rating, 0) AS rating,
+            p.latitude AS latitude,
+            p.longitude AS longitude
         FROM plan_schedules ps
                  JOIN places p ON ps.place_id = p.place_id
                  LEFT JOIN reviews r
