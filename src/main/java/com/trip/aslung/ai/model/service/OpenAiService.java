@@ -140,7 +140,7 @@ public class OpenAiService {
                     Map.of("role", "system", "content", "You are a helpful travel guide. Respond in JSON only."),
                     Map.of("role", "user", "content", prompt)
             ));
-            body.put("temperature", 0.7);
+            // body.put("temperature", 0.7);
 
             // Header 설정
             HttpHeaders headers = new HttpHeaders();
