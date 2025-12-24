@@ -172,6 +172,15 @@ public class PlanServiceImpl implements PlanService {
         planMapper.insertPlan(newPlan);
         Long newPlanId = newPlan.getPlanId();
 
+        PlanMember member = new PlanMember();
+        member.setPlanId(newPlanId);
+        member.setUserId(userId);
+        member.setRole("OWNER");   // 방장 권한
+        member.setStatus("JOINED"); // 참여 상태
+        member.setJoinedAt(LocalDateTime.now());
+
+        planMemberMapper.insertPlanMember(member);
+
         // 4. 원본 스케줄 조회 (selectSchedulesByPlanId 사용)
         List<PlanSchedule> sourceSchedules = planScheduleMapper.selectSchedulesByPlanId(sourcePlanId);
 
