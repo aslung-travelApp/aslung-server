@@ -13,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,13 +33,15 @@ public class OpenAiService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
+    // 외부 서비스 주입
+    private final WeatherService weatherService;
+    private final KakaoService kakaoService;
+
     // =================================================================================
-    // 1. 기존 메인 추천 로직 (유지)
+    // 1. 메인 추천 (기존 로직 유지)
     // =================================================================================
     public List<AiPlaceDto> getRecommendation(List<AiPlaceDto> candidates, AiRequestDto request, String weather) {
-        log.info("=== AI 추천 요청 데이터 ===");
-        log.info("키워드: {}", request.getKeyword());
-
+        log.info("=== AI 추천 요청 ===");
         String dbContext = searchDatabase(request.getKeyword());
         String prompt = createPrompt(candidates, request, weather, dbContext);
         return callGMS(prompt, candidates);
@@ -161,37 +164,109 @@ public class OpenAiService {
     }
 
     // =================================================================================
-    // ★ 4. Logic RAG: 추상적 표현 -> 구체적 키워드 확장 -> DB 다중 검색 (안전장치 제거)
+    // ★ 4. Logic RAG + Hybrid Retrieval (DB + Kakao) + Weather + Fallback
     // =================================================================================
 
     /**
-     * [재추천] 사용자의 입력("추워")을 구체적 키워드(["카페", "실내"])로 확장하여 DB 검색
+     * [재추천] 사용자 입력 + 위치 정보 + 날씨 기반 통합 추천
      */
-    public List<AiPlaceDto> refineRecommendations(String userPrompt) {
-        log.info("AI 재추천 요청(원본): {}", userPrompt);
+    public List<AiPlaceDto> refineRecommendations(AiRequestDto request) {
+        String userPrompt = request.getMessage();
+        log.info("AI 재추천 시작 - 요청: {}, 위치: x={}, y={}", userPrompt, request.getX(), request.getY());
 
-        // 1. [확장] 추상적 요청 -> 구체적 연관 키워드 리스트 (GPT)
-        List<String> keywords = expandToKeywords(userPrompt);
-        log.info("AI가 확장한 검색어 리스트: {}", keywords);
-
-        // 2. [검색] 확장된 키워드들로 DB '넓은' 검색 (OR 조건)
-        List<AiPlaceDto> candidates = searchPlacesByKeywords(keywords);
-        log.info("DB 검색 결과 개수: {}", candidates.size());
-
-        // ★ [수정] 결과가 없으면(0건) 그냥 빈 리스트 반환 (랜덤 추천 안함)
-        if (candidates.isEmpty()) {
-            log.info("검색 결과 없음. 빈 리스트 반환.");
+        // 1. [날씨] 현재 위치(y:위도, x:경도) 날씨 조회
+        String weatherInfo = "Clear";
+        if (request.getX() != null && request.getY() != null) {
+            // WeatherService는 (latStr, lngStr) 순서로 받으므로 (y, x) 전달
+            weatherInfo = weatherService.getCurrentWeather(request.getY(), request.getX());
+            log.info("현재 날씨: {}", weatherInfo);
         }
 
-        return candidates;
+        // 2. [확장] 사용자 요청 -> 구체적 키워드 리스트 (GPT)
+        List<String> keywords = expandToKeywords(userPrompt);
+        log.info("확장된 키워드: {}", keywords);
+
+        // 3. [수집] DB + Kakao 후보군 통합
+        List<AiPlaceDto> combinedCandidates = new ArrayList<>();
+
+        // (3-1) DB 검색
+        List<AiPlaceDto> dbResults = searchPlacesByKeywords(keywords);
+        combinedCandidates.addAll(dbResults);
+        log.info("DB 검색 결과: {}건", dbResults.size());
+
+        // (3-2) Kakao API 검색 (반경 5km)
+        if (request.getX() != null && request.getY() != null) {
+            for (String kw : keywords) {
+                // 키워드별 검색 수행 (반경 5km = 5000m)
+                List<AiPlaceDto> kakaoResults = kakaoService.searchPlacesByKeyword(kw, request.getX(), request.getY(), 5000);
+
+                // Kakao 결과는 좌표가 String이므로 Double(lat, lng)로 변환해줘야 지도에 찍힘
+                for (AiPlaceDto kPlace : kakaoResults) {
+                    if (kPlace.getY() != null) kPlace.setLat(Double.parseDouble(kPlace.getY()));
+                    if (kPlace.getX() != null) kPlace.setLng(Double.parseDouble(kPlace.getX()));
+                    kPlace.setOverview("카카오맵 평점과 리뷰가 좋은 장소입니다."); // 기본 설명 추가
+                }
+                combinedCandidates.addAll(kakaoResults);
+            }
+        }
+
+        // (3-3) 중복 제거 (ID 기준)
+        combinedCandidates = removeDuplicates(combinedCandidates);
+        log.info("통합 후보군 개수: {}건", combinedCandidates.size());
+
+        // 4. [비상 대책] 후보군이 부족하면(3개 미만) -> 광범위 재검색 (Fallback)
+        if (combinedCandidates.size() < 3 && request.getX() != null) {
+            log.info("후보군 부족! Fallback 검색 실행...");
+            List<String> fallbackKeywords = new ArrayList<>();
+            // 사용자의 취향(styles)이 있다면 그걸로 검색, 없으면 기본 키워드
+            if (request.getStyles() != null && !request.getStyles().isEmpty()) {
+                // "힐링", "액티비티" 같은 스타일 리스트를 키워드로 사용
+                fallbackKeywords.addAll(request.getStyles()); // 수정: List<String>을 바로 addAll
+            } else {
+                fallbackKeywords.add("관광명소");
+                fallbackKeywords.add("맛집");
+                fallbackKeywords.add("카페");
+            }
+
+            for (String fbKw : fallbackKeywords) {
+                List<AiPlaceDto> fbResults = kakaoService.searchPlacesByKeyword(fbKw, request.getX(), request.getY(), 10000); // 반경 10km
+                for (AiPlaceDto kPlace : fbResults) {
+                    if (kPlace.getY() != null) kPlace.setLat(Double.parseDouble(kPlace.getY()));
+                    if (kPlace.getX() != null) kPlace.setLng(Double.parseDouble(kPlace.getX()));
+                }
+                combinedCandidates.addAll(fbResults);
+            }
+            combinedCandidates = removeDuplicates(combinedCandidates);
+        }
+
+        // 그래도 없으면 빈 리스트
+        if (combinedCandidates.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 5. [선택] GPT에게 최종 3곳 선정 요청 (날씨 정보 포함)
+        String prompt = createPrompt(combinedCandidates, request, weatherInfo, "Focus on the user request: " + userPrompt);
+        return callGMS(prompt, combinedCandidates);
     }
 
-    // (4-1) GPT를 이용해 추상적 문장을 구체적 명사 리스트로 변환
+    // (보조) 중복 제거
+    private List<AiPlaceDto> removeDuplicates(List<AiPlaceDto> list) {
+        return list.stream()
+                .filter(distinctByKey(AiPlaceDto::getId))
+                .collect(Collectors.toList());
+    }
+
+    private static <T> java.util.function.Predicate<T> distinctByKey(java.util.function.Function<? super T, ?> keyExtractor) {
+        Set<Object> seen = java.util.concurrent.ConcurrentHashMap.newKeySet();
+        return t -> seen.add(keyExtractor.apply(t));
+    }
+
+    // (4-1) GPT 키워드 확장
     private List<String> expandToKeywords(String userPrompt) {
         if (userPrompt == null || userPrompt.length() < 2) return List.of(userPrompt);
 
         try {
-            String prompt = "Analyze the user's abstract travel request and convert it into 3~5 concrete search keywords(nouns) to find places in a database.\n" +
+            String prompt = "Analyze the user's abstract travel request and convert it into 3~5 concrete search keywords(nouns) to find places in a database or map.\n" +
                     "User Request: \"" + userPrompt + "\"\n" +
                     "Examples:\n" +
                     "- 'It's too cold' -> '카페, 미술관, 박물관, 쇼핑몰, 실내'\n" +
@@ -220,21 +295,19 @@ public class OpenAiService {
             String[] keywords = content.split(",");
             List<String> result = new ArrayList<>();
             for (String k : keywords) {
-                result.add(k.trim().replace(".", "")); // 점 제거
+                result.add(k.trim().replace(".", ""));
             }
             return result;
-
         } catch (Exception e) {
             log.error("키워드 확장 실패: {}", e.getMessage());
             return List.of(userPrompt);
         }
     }
 
-    // (4-2) 여러 키워드 중 하나라도 포함된 장소 검색 (Dynamic SQL)
+    // (4-2) DB 검색 (Dynamic SQL)
     private List<AiPlaceDto> searchPlacesByKeywords(List<String> keywords) {
         if (keywords.isEmpty()) return new ArrayList<>();
 
-        // 동적 쿼리: WHERE (name LIKE ? OR overview LIKE ?) OR (name LIKE ? ...)
         StringBuilder sql = new StringBuilder("SELECT place_id, name, address, content_type_id, overview, latitude, longitude FROM places WHERE ");
         List<Object> params = new ArrayList<>();
 
@@ -257,7 +330,6 @@ public class OpenAiService {
                 dto.setCategory(String.valueOf(row.get("content_type_id")));
                 dto.setOverview((String) row.get("overview"));
 
-                // 좌표 매핑
                 if (row.get("latitude") != null) dto.setLat(Double.parseDouble(String.valueOf(row.get("latitude"))));
                 if (row.get("longitude") != null) dto.setLng(Double.parseDouble(String.valueOf(row.get("longitude"))));
 
