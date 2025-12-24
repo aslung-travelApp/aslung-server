@@ -113,7 +113,7 @@
             ps.schedule_id AS scheduleId,
             ps.plan_id AS planId,
             ps.place_id AS placeId,
-            p.title AS placeName,
+            p.name AS placeName,
             ps.day_number AS dayNumber,
             ps.order_index AS orderIndex,
             IFNULL(r.comment, ps.memo) AS memo,
