@@ -47,9 +47,9 @@ public class PlanServiceImpl implements PlanService {
         boolean isMember = members.stream()
                 .anyMatch(m -> m.getUserId().equals(userId) && "JOINED".equals(m.getStatus()));
 
-        if(!Boolean.TRUE.equals(plan.getIsPublic()) && !isMember && !isOwner){
-            throw new IllegalArgumentException("접근 권한이 없습니다");
-        }
+//        if(!Boolean.TRUE.equals(plan.getIsPublic()) && !isMember && !isOwner){
+//            throw new IllegalArgumentException("접근 권한이 없습니다");
+//        }
 
         // 4. 스케줄 조회
         List<PlanSchedule> schedules = planScheduleMapper.selectSchedulesByPlanId(planId);
