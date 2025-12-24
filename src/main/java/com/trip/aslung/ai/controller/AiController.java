@@ -59,9 +59,11 @@ public class AiController {
     @PostMapping("/refine")
     public ResponseEntity<List<AiPlaceDto>> refine(@RequestBody AiRequestDto request) {
         log.info("AI 재추천 요청: {}", request.getMessage());
+        log.info("사용자 위치: x={}, y={}", request.getX(), request.getY());
         // 1. 사용자의 채팅 메시지(request.getMessage())를 기반으로 DB 검색 및 재추천
         // 2. 새로운 장소 리스트 반환
-        List<AiPlaceDto> newResults = openAiService.refineRecommendations(request.getMessage());
+        List<AiPlaceDto> newResults = openAiService.refineRecommendations(request);
+
         return ResponseEntity.ok(newResults);
     }
 }
