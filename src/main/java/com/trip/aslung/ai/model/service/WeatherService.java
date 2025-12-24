@@ -44,8 +44,28 @@ public class WeatherService {
             URI uri = new URI(url);
             String response = restTemplate.getForObject(uri, String.class);
 
-            if (response.contains("\"category\":\"PTY\",\"obsrValue\":\"1\"")) return "Rainy";
-            if (response.contains("\"category\":\"PTY\",\"obsrValue\":\"3\"")) return "Snowy";
+            log.info("기상청 API 응답: {}", response);
+
+            // 에러 체크 (기상청은 에러나면 JSON 안에 resultMsg 등을 줍니다)
+            if (response == null || !response.contains("NORMAL_SERVICE")) {
+                log.error("기상청 API 호출 실패 또는 에러 발생");
+                return "Clear"; // 실패 시 기본값
+            }
+
+            // 1:비, 2:비/눈, 5:빗방울
+            if (response.contains("\"obsrValue\":\"1\"") ||
+                    response.contains("\"obsrValue\":\"2\"") ||
+                    response.contains("\"obsrValue\":\"5\"")) {
+                return "Rainy";
+            }
+
+            // 3:눈, 6:빗방울/눈날림, 7:눈날림
+            if (response.contains("\"obsrValue\":\"3\"") ||
+                    response.contains("\"obsrValue\":\"6\"") ||
+                    response.contains("\"obsrValue\":\"7\"")) {
+                return "Snowy";
+            }
+
             return "Clear";
         } catch (Exception e) {
             log.error("날씨 API 에러", e);
