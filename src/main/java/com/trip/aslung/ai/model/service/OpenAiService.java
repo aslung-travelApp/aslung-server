@@ -174,77 +174,61 @@ public class OpenAiService {
         String userPrompt = request.getMessage();
         log.info("AI 재추천 시작 - 요청: {}, 위치: x={}, y={}", userPrompt, request.getX(), request.getY());
 
-        // 1. [날씨] 현재 위치(y:위도, x:경도) 날씨 조회
+        // 1. [날씨]
         String weatherInfo = "Clear";
         if (request.getX() != null && request.getY() != null) {
-            // WeatherService는 (latStr, lngStr) 순서로 받으므로 (y, x) 전달
             weatherInfo = weatherService.getCurrentWeather(request.getY(), request.getX());
-            log.info("현재 날씨: {}", weatherInfo);
         }
 
-        // 2. [확장] 사용자 요청 -> 구체적 키워드 리스트 (GPT)
+        // 2. [확장] "뜨끈한 국물" -> ["국밥", "전골", "이자카야", "오뎅바"]
         List<String> keywords = expandToKeywords(userPrompt);
         log.info("확장된 키워드: {}", keywords);
 
-        // 3. [수집] DB + Kakao 후보군 통합
+        // 3. [1차 수집] DB + Kakao (반경 5km)
         List<AiPlaceDto> combinedCandidates = new ArrayList<>();
 
         // (3-1) DB 검색
-        List<AiPlaceDto> dbResults = searchPlacesByKeywords(keywords);
-        combinedCandidates.addAll(dbResults);
-        log.info("DB 검색 결과: {}건", dbResults.size());
+        combinedCandidates.addAll(searchPlacesByKeywords(keywords));
 
-        // (3-2) Kakao API 검색 (반경 5km)
+        // (3-2) Kakao API 검색 (5km)
         if (request.getX() != null && request.getY() != null) {
             for (String kw : keywords) {
-                // 키워드별 검색 수행 (반경 5km = 5000m)
-                List<AiPlaceDto> kakaoResults = kakaoService.searchPlacesByKeyword(kw, request.getX(), request.getY(), 5000);
-
-                // Kakao 결과는 좌표가 String이므로 Double(lat, lng)로 변환해줘야 지도에 찍힘
-                for (AiPlaceDto kPlace : kakaoResults) {
-                    if (kPlace.getY() != null) kPlace.setLat(Double.parseDouble(kPlace.getY()));
-                    if (kPlace.getX() != null) kPlace.setLng(Double.parseDouble(kPlace.getX()));
-                    kPlace.setOverview("카카오맵 평점과 리뷰가 좋은 장소입니다."); // 기본 설명 추가
-                }
-                combinedCandidates.addAll(kakaoResults);
+                combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, request.getX(), request.getY(), 5000));
             }
         }
 
-        // (3-3) 중복 제거 (ID 기준)
         combinedCandidates = removeDuplicates(combinedCandidates);
-        log.info("통합 후보군 개수: {}건", combinedCandidates.size());
+        log.info("1차 검색 결과: {}건", combinedCandidates.size());
 
-        // 4. [비상 대책] 후보군이 부족하면(3개 미만) -> 광범위 재검색 (Fallback)
+        // =========================================================================
+        // ★ [수정됨] 4. [비상 대책] 반경을 20km로 넓혀서 '원래 키워드'만 다시 검색
+        // (맛집, 카페 같은 엉뚱한 기본값 추가 로직 삭제함)
+        // =========================================================================
         if (combinedCandidates.size() < 3 && request.getX() != null) {
-            log.info("후보군 부족! Fallback 검색 실행...");
-            List<String> fallbackKeywords = new ArrayList<>();
-            // 사용자의 취향(styles)이 있다면 그걸로 검색, 없으면 기본 키워드
-            if (request.getStyles() != null && !request.getStyles().isEmpty()) {
-                // "힐링", "액티비티" 같은 스타일 리스트를 키워드로 사용
-                fallbackKeywords.addAll(request.getStyles()); // 수정: List<String>을 바로 addAll
-            } else {
-                fallbackKeywords.add("관광명소");
-                fallbackKeywords.add("맛집");
-                fallbackKeywords.add("카페");
+            log.info("결과 부족! 반경을 20km로 넓혀서 재검색합니다.");
+
+            for (String kw : keywords) {
+                List<AiPlaceDto> wideResults = kakaoService.searchPlacesByKeyword(kw, request.getX(), request.getY(), 20000);
+                combinedCandidates.addAll(wideResults);
             }
 
-            for (String fbKw : fallbackKeywords) {
-                List<AiPlaceDto> fbResults = kakaoService.searchPlacesByKeyword(fbKw, request.getX(), request.getY(), 10000); // 반경 10km
-                for (AiPlaceDto kPlace : fbResults) {
-                    if (kPlace.getY() != null) kPlace.setLat(Double.parseDouble(kPlace.getY()));
-                    if (kPlace.getX() != null) kPlace.setLng(Double.parseDouble(kPlace.getX()));
+            // (옵션) 사용자가 회원가입 때 설정한 '취향 태그(styles)'가 있다면 그것까지는 봐줌 (문맥상 관련 있을 확률 높음)
+            if (request.getStyles() != null && !request.getStyles().isEmpty()) {
+                for (String style : request.getStyles()) {
+                    combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(style, request.getX(), request.getY(), 20000));
                 }
-                combinedCandidates.addAll(fbResults);
             }
+
             combinedCandidates = removeDuplicates(combinedCandidates);
         }
 
-        // 그래도 없으면 빈 리스트
+        // 5. [최종 확인] 그래도 없으면 깔끔하게 빈 리스트 리턴 (엉뚱한 추천 방지)
         if (combinedCandidates.isEmpty()) {
+            log.warn("20km 반경 내에서도 키워드 관련 장소를 찾지 못함.");
             return new ArrayList<>();
         }
 
-        // 5. [선택] GPT에게 최종 3곳 선정 요청 (날씨 정보 포함)
+        // 6. [선택] GPT 선정
         String prompt = createPrompt(combinedCandidates, request, weatherInfo, "Focus on the user request: " + userPrompt);
         return callGMS(prompt, combinedCandidates);
     }
