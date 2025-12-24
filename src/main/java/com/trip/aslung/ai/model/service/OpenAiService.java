@@ -257,8 +257,10 @@ public class OpenAiService {
     public List<AiPlaceDto> refineRecommendations(String userPrompt) {
         log.info("AI 재추천 요청: {}", userPrompt);
 
-        // 1. [RAG] 사용자 입력어(예: 카페, 조용한)로 DB에서 관련 장소 다시 검색
-        String dbContext = searchDatabase(userPrompt);
+// 1. [핵심] 사용자의 긴 문장에서 "검색용 키워드"만 추출 (GPT 이용)
+        // 예: "비오니까 실내로 추천해줘" -> "실내"
+        String keyword = extractKeyword(userPrompt);
+        log.info("AI가 추출한 검색 키워드: {}", keyword);
 
         // 2. 후보군 조회 (DB에서 검색된 장소들을 후보군으로 변환)
         // (실제로는 DB 검색 결과인 Map을 AiPlaceDto로 변환하는 과정이 필요하지만,
@@ -267,11 +269,46 @@ public class OpenAiService {
         // ★ 편의상: DB 검색 결과에 나온 장소들을 후보군으로 사용
         List<AiPlaceDto> candidates = convertDbResultToDto(userPrompt);
 
-        // 3. 프롬프트 생성 (사용자 요구사항 강조)
-        String prompt = createRefinePrompt(userPrompt, dbContext, candidates);
+        return candidates;
+    }
 
-        // 4. GMS 호출 및 결과 파싱
-        return callGMS(prompt, candidates);
+    // ▼▼▼ [추가] 문장에서 핵심 단어(검색어)만 뽑아내는 메서드 ▼▼▼
+    private String extractKeyword(String sentence) {
+        // 2글자 이하의 짧은 단어면 굳이 AI 거치지 않고 바로 검색
+        if (sentence == null || sentence.length() < 2) return sentence;
+
+        try {
+            // 프롬프트: "이 문장에서 DB 검색에 사용할 핵심 명사 딱 1개만 한국어로 뽑아줘"
+            String prompt = "Extract only ONE core search keyword (noun) from the following sentence to search in a database place names or descriptions.\n" +
+                    "Sentence: \"" + sentence + "\"\n" +
+                    "Output ONLY the word in Korean. Do not add any explanation.";
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("model", modelName);
+            body.put("messages", List.of(
+                    Map.of("role", "system", "content", "You are a search keyword extractor. Output only the keyword."),
+                    Map.of("role", "user", "content", prompt)
+            ));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
+            headers.set("Authorization", "Bearer " + apiKey);
+
+            HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
+            ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
+
+            // 응답 파싱
+            Map map = objectMapper.readValue(response.getBody(), Map.class);
+            List choices = (List) map.get("choices");
+            Map message = (Map) ((Map) choices.get(0)).get("message");
+            String keyword = (String) message.get("content");
+
+            return keyword.trim(); // 공백 제거 후 반환
+
+        } catch (Exception e) {
+            log.error("키워드 추출 실패: {}", e.getMessage());
+            return sentence; // 에러 나면 그냥 원본 문장 사용
+        }
     }
 
     // (보조) 사용자 입력으로 DB를 뒤져서 후보군 DTO 리스트를 만드는 메서드
