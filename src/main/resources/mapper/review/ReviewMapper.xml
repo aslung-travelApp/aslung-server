@@ -108,20 +108,24 @@
         WHERE p.post_id = #{postId}
     </select>
 
-    <select id="selectPostSchedules" parameterType="long" resultType="com.trip.aslung.review.model.dto.PostScheduleDto">
+    <select id="selectPostSchedules" resultType="com.trip.aslung.review.model.dto.PostScheduleDto">
         SELECT
-            ps.day_number AS dayNumber,
+            ps.schedule_id AS scheduleId,
+            ps.plan_id AS planId,
+            ps.place_id AS placeId,
+            p.title AS placeName,   ps.day_number AS dayNumber,
             ps.order_index AS orderIndex,
-            pl.name AS placeName,
-            ct.content_type_name AS category, -- 기존 pl.category 대신 테이블 조인 후 이름 추출
-            r.comment AS memo,
-            IFNULL(r.rating, 0) AS rating
+            ps.memo AS memo,        -- ★★★ [핵심] reviews 테이블의 comment와 rating을 가져옵니다 ★★★
+            r.comment AS comment,   IFNULL(r.rating, 0) AS rating,
+
         FROM plan_schedules ps
-                 JOIN places pl ON ps.place_id = pl.place_id
-            -- 카테고리 이름을 가져오기 위한 JOIN 추가
-                 JOIN contenttypes ct ON pl.content_type_id = ct.content_type_id
-                 LEFT JOIN reviews r ON ps.schedule_id = r.plan_schedule_id
-        WHERE ps.plan_id = #{planId}
+                 JOIN places p ON ps.place_id = p.place_id
+
+            -- reviews 테이블과 조인 (post_id와 plan_schedule_id로 매칭)
+            -- 게시글(post)에 종속된 리뷰를 가져와야 하므로 post_id 조건 필수!
+                 LEFT JOIN reviews r
+                           ON ps.plan_schedule_id = r.plan_schedule_id
+                               AND r.post_id = #{postId}  WHERE ps.plan_id = #{planId}
         ORDER BY ps.day_number, ps.order_index
     </select>
 

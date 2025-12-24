@@ -31,7 +31,7 @@ public interface ReviewMapper {
     PostDetailDto selectPostDetail(@Param("postId") Long postId, @Param("userId") Long userId);
 
     // 7. 여행기 상세 스케줄(코스) 조회
-    List<PostScheduleDto> selectPostSchedules(Long planId);
+    List<PostScheduleDto> selectPostSchedules(@Param("planId") Long planId, @Param("postId") Long postId);
 
     // 8. 여행기 상세 리뷰 목록 조회
     List<ReviewResponseDto> selectReviewsByPostId(Long postId);

@@ -56,7 +56,7 @@ public class ReviewService {
 
         if (post.getPlanId() != null) {
             // [확인] 여기서 수정된 XML 쿼리가 실행되어 리뷰 코멘트가 memo로 들어감
-            post.setSchedules(reviewMapper.selectPostSchedules(post.getPlanId()));
+            post.setSchedules(reviewMapper.selectPostSchedules(post.getPlanId(), postId));
         }
 
         // [수정] 장소 리뷰 대신 -> 게시글 댓글(미리보기 3개)을 가져와서 넣음
