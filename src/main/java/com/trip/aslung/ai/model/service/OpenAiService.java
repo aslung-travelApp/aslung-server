@@ -13,178 +13,312 @@ import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OpenAiService {
 
+    // application.properties 설정값 주입
     @Value("${openai.api.key}")
     private String apiKey;
 
     @Value("${openai.api.url}")
-    private String apiUrl;
+    private String apiUrl; // https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions
 
     @Value("${openai.model}")
-    private String modelName;
+    private String modelName; // gpt-5-mini
 
     private final JdbcTemplate jdbcTemplate;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final WeatherService weatherService;
-    private final KakaoService kakaoService;
 
-    // =================================================================================
-    // ★ 1. 메인 추천 (처음 들어왔을 때)
-    // =================================================================================
+    /**
+     * [메인 메서드] AI 추천 실행
+     * 1. DB 검색 (RAG)
+     * 2. 프롬프트 생성
+     * 3. GPT 호출 및 결과 파싱
+     */
     public List<AiPlaceDto> getRecommendation(List<AiPlaceDto> candidates, AiRequestDto request, String weather) {
-        log.info("=== AI 초기 추천 요청 ===");
-        log.info("입력 키워드: {}, 위치: {}, {}", request.getKeyword(), request.getX(), request.getY());
-
-        // ▼▼▼ [핵심 수정] 초기 후보군이 없으면(0개), 좌표를 이용해 카카오에서 즉시 검색해온다! ▼▼▼
-        if (candidates == null || candidates.isEmpty()) {
-            log.info("🚨 초기 후보군 없음! 좌표 기반 스마트 검색 시작...");
-            // 사용자의 키워드와 좌표로 검색 수행
-            candidates = fetchCandidatesSmartly(request.getKeyword(), request.getX(), request.getY());
-        }
-
-        // 그래도 없으면 빈 리스트 반환
-        if (candidates.isEmpty()) {
-            log.warn("초기 검색 결과 0건. (위치 정보 확인 필요)");
-            return new ArrayList<>();
-        }
-
-        // 후보군이 너무 많으면 상위 15개만 사용 (비용 절약)
-        if (candidates.size() > 15) {
-            candidates = new ArrayList<>(candidates.subList(0, 15));
-        }
-
-        // 초기 추천은 DB Context도 참고 (없으면 무시)
+        // 요청 데이터가 제대로 들어왔는지 로그 확인
+        log.info("=== AI 추천 요청 데이터 ===");
+        log.info("날씨: {}", weather);
+        log.info("동행자: {}", request.getCompanion());
+        log.info("스타일: {}", request.getStyles());
+        log.info("키워드: {}", request.getKeyword());
+        log.info("후보군 개수: {}", candidates.size());
+        // 1. [RAG] 5만 개 데이터 중 키워드와 관련된 내용 찾기 (SQL LIKE)
         String dbContext = searchDatabase(request.getKeyword());
+
+        // 2. 프롬프트 조립 (날씨 + 사용자정보 + DB정보 + 카카오후보군)
         String prompt = createPrompt(candidates, request, weather, dbContext);
 
+        // 3. SSAFY GMS 서버로 전송
         return callGMS(prompt, candidates);
     }
 
-    // =================================================================================
-    // ★ 2. 재추천 (채팅 입력 시)
-    // =================================================================================
-    public List<AiPlaceDto> refineRecommendations(AiRequestDto request) {
-        String userPrompt = request.getMessage();
-        log.info("🚀 AI 실시간 재추천: \"{}\" (위치: {}, {})", userPrompt, request.getX(), request.getY());
-
-        // 1. 날씨 조회
-        String weatherInfo = "정보 없음";
-        if (request.getX() != null && request.getY() != null) {
-            try {
-                weatherInfo = weatherService.getCurrentWeather(request.getY(), request.getX());
-            } catch (Exception e) {}
+    // ✅ 1단계: DB 검색 (Spring AI 대신 SQL 사용 -> 속도 빠름)
+    private String searchDatabase(String keyword) {
+        if (keyword == null || keyword.isEmpty()) {
+            return "특별히 지정된 키워드 정보 없음.";
         }
 
-        // 2. 스마트 검색 수행 (키워드 확장 -> 카카오/DB 검색)
-        List<AiPlaceDto> candidates = fetchCandidatesSmartly(userPrompt, request.getX(), request.getY());
+        // 이름이나 설명에 키워드가 포함된 장소 상위 3개만 조회
+        String sql = "SELECT name, address, overview FROM places WHERE name LIKE ? OR overview LIKE ? LIMIT 3";
+        String param = "%" + keyword + "%";
 
-        if (candidates.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        // 3. GPT 선정
-        int limit = Math.min(candidates.size(), 15);
-        List<AiPlaceDto> topCandidates = new ArrayList<>(candidates.subList(0, limit));
-        String prompt = createRefinePrompt(topCandidates, userPrompt, weatherInfo);
-
-        return callGMS(prompt, topCandidates);
-    }
-
-    // =================================================================================
-    // ★ 3. [공통 로직] 스마트 후보군 수집 (위치 있으면 주변, 없으면 전국)
-    // =================================================================================
-    private List<AiPlaceDto> fetchCandidatesSmartly(String userInput, String x, String y) {
-        List<AiPlaceDto> combinedCandidates = new ArrayList<>();
-
-        // (1) 키워드 확장 ("국밥" -> "순대국, 돼지국밥, 해장국")
-        List<String> keywords = expandToKeywords(userInput);
-        log.info("🔍 확장된 검색 키워드: {}", keywords);
-
-        // (2) DB 검색 (위치 무관하게 검색 가능)
-        combinedCandidates.addAll(searchPlacesByKeywords(keywords));
-
-        // (3) 카카오 검색
-        // KakaoService가 null 체크를 하므로 안심하고 호출
-        for (String kw : keywords) {
-            // 1차: 5km 반경
-            combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, x, y, 5000));
-        }
-
-        combinedCandidates = removeDuplicates(combinedCandidates);
-
-        // 결과가 부족하고, 위치 정보가 확실히 있다면 20km로 확장
-        if (combinedCandidates.size() < 3 && x != null && y != null) {
-            log.info("⚠️ 결과 부족. 20km 반경으로 확장 검색...");
-            for (String kw : keywords) {
-                combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, x, y, 20000));
-            }
-        }
-        // 위치 정보가 아예 없어서 결과가 0개인 경우 -> 전국 단위 검색 시도
-        else if (combinedCandidates.isEmpty()) {
-            log.info("⚠️ 위치 정보 없음. 전국 단위 검색 시도...");
-            for (String kw : keywords) {
-                combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, null, null, 0));
-            }
-        }
-
-        return removeDuplicates(combinedCandidates);
-    }
-
-    // =================================================================================
-    // 4. 보조 메서드들
-    // =================================================================================
-
-    // (GPT 키워드 확장)
-    private List<String> expandToKeywords(String userPrompt) {
-        if (userPrompt == null || userPrompt.length() < 2) return List.of(userPrompt);
         try {
-            String prompt = "Convert user request to 3~4 Korean search keywords(nouns) for map search.\n" +
-                    "Example: 'hot soup' -> '국밥, 찌개, 전골, 우동'\n" +
-                    "User Request: \"" + userPrompt + "\"\n" +
-                    "Output ONLY keywords separated by comma(,)";
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, param, param);
 
+            if (rows.isEmpty()) return "관련된 DB 정보 없음.";
+
+            StringBuilder sb = new StringBuilder();
+            for (Map<String, Object> row : rows) {
+                sb.append(String.format("- 장소명: %s | 주소: %s | 설명: %s\n",
+                        row.get("name"), row.get("address"), row.get("overview")));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("DB 검색 중 에러 발생: {}", e.getMessage());
+            return "DB 검색 실패 (GPT가 자체 지식으로 판단합니다)";
+        }
+    }
+
+    // ✅ 2단계: 프롬프트 생성 (English Version)
+    private String createPrompt(List<AiPlaceDto> candidates, AiRequestDto req, String weather, String dbContext) {
+        StringBuilder sb = new StringBuilder();
+
+        // 상황 정보 (Travel Context)
+        sb.append("### [Travel Context] ###\n");
+        sb.append("- Weather: ").append(weather).append("\n");
+        sb.append("- Companion: ").append(req.getCompanion()).append("\n");
+        sb.append("- Travel Style: ").append(req.getStyles()).append("\n");
+        sb.append("- Interest Keyword: ").append(req.getKeyword()).append("\n\n");
+
+        // RAG 정보 (Public Data Context)
+        sb.append("### [Key Public Data Context (Priority Reference)] ###\n");
+        sb.append(dbContext).append("\n\n");
+
+        // 후보군 정보 (Candidate Places)
+        sb.append("### [Nearby Candidate Places] ###\n");
+        for (AiPlaceDto p : candidates) {
+            sb.append(String.format("- ID: %s | Name: %s | Category: %s\n",
+                    p.getId(), p.getPlaceName(), p.getCategory()));
+        }
+
+        // 지시사항 (Instructions)
+        sb.append("\n### [Instructions] ###\n");
+        sb.append("You are a professional travel guide. Select the 3 places that best match the user's [Travel Context] from the [Nearby Candidate Places] list above.\n");
+
+        // 중요 조건
+        sb.append("- **IMPORTANT**: You MUST consider the [Travel Style] and [Companion] type when making your selection.\n");
+
+        // 상세 단계
+        sb.append("1. Analyze and compare the 'Key Public Data Context' with the 'Nearby Candidate Places'.\n");
+        sb.append("2. Select places that best fit the current weather and style.\n");
+        sb.append("- Example: If the weather is 'Rain', recommend indoor activities.\n");
+
+        // ** 핵심: 출력 언어 지정 **
+        sb.append("3. For each selected place, write a specific 'reason' explaining **why this place fits the user's style and weather**.\n");
+        sb.append("   - **NOTE: The 'reason' value MUST be written in KOREAN.**\n");
+
+        // JSON 제약 조건
+        sb.append("4. CRITICAL: The JSON key for the explanation MUST be named 'reason'. Do NOT use 'description' or 'content'.\n");
+        sb.append("5. The output must be strictly in the following JSON format only. (Do NOT use Markdown blocks like ```json).\n");
+        sb.append("Format: { \"recommendations\": [ { \"id\": \"(Place ID)\", \"reason\": \"(Reason in Korean, 2~3 sentences)\" } ] }");
+
+        return sb.toString();
+    }
+
+    // ✅ 3단계: GMS 호출 및 파싱 (RestTemplate 사용)
+    private List<AiPlaceDto> callGMS(String prompt, List<AiPlaceDto> candidates) {
+        try {
+            // 요청 Body 생성
             Map<String, Object> body = new HashMap<>();
-            body.put("model", modelName);
-            body.put("messages", List.of(Map.of("role", "system", "content", "Keyword generator."), Map.of("role", "user", "content", prompt)));
+            body.put("model", modelName); // gpt-5-mini
+            body.put("messages", List.of(
+                    Map.of("role", "system", "content", "You are a helpful travel guide. Respond in JSON only."),
+                    Map.of("role", "user", "content", prompt)
+            ));
+            // body.put("temperature", 0.7);
+
+            // Header 설정
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
-            headers.set("Authorization", "Bearer " + apiKey);
+            headers.set("Authorization", "Bearer " + apiKey); // GMS Key
+
+            // HTTP 요청 전송
             HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
             ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
 
-            Map map = objectMapper.readValue(response.getBody(), Map.class);
+            // 응답 파싱
+            return parseResponse(response.getBody(), candidates);
+
+        } catch (Exception e) {
+            log.error("GPT 호출 실패: {}", e.getMessage());
+            // 실패 시 안전하게 후보군 중 3개만 리턴
+            int limit = Math.min(candidates.size(), 3);
+            return new ArrayList<>(candidates.subList(0, limit));
+        }
+    }
+
+    // JSON 응답 해석기
+    private List<AiPlaceDto> parseResponse(String jsonResponse, List<AiPlaceDto> candidates) {
+        try {
+            Map map = objectMapper.readValue(jsonResponse, Map.class);
             List choices = (List) map.get("choices");
             Map message = (Map) ((Map) choices.get(0)).get("message");
             String content = (String) message.get("content");
-            String[] keywords = content.split(",");
-            List<String> result = new ArrayList<>();
-            for (String k : keywords) result.add(k.trim().replace(".", ""));
+
+            // 가끔 GPT가 ```json ... ``` 을 붙여서 줄 때가 있어서 제거함
+            if (content.contains("```json")) {
+                content = content.replace("```json", "").replace("```", "");
+            }
+
+            Map contentMap = objectMapper.readValue(content, Map.class);
+            List<Map<String, String>> recs = (List<Map<String, String>>) contentMap.get("recommendations");
+
+            List<AiPlaceDto> result = new ArrayList<>();
+            for (Map<String, String> r : recs) {
+                String id = r.get("id");
+                String reason = r.get("reason");
+
+                log.info("GPT 응답 - ID: {}, Reason: {}", id, reason);
+
+                // 후보군 리스트에서 ID가 같은 녀석을 찾아서 '이유'를 덮어씀
+                candidates.stream()
+                        .filter(c -> c.getId().equals(id))
+                        .findFirst()
+                        .ifPresent(place -> {
+                            place.setReason(reason);
+                            result.add(place);
+                        });
+            }
             return result;
-        } catch (Exception e) { return List.of(userPrompt); }
+
+        } catch (Exception e) {
+            log.error("JSON 파싱 에러: {}", e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
-    // (DB 검색)
-    private List<AiPlaceDto> searchPlacesByKeywords(List<String> keywords) {
-        if (keywords.isEmpty()) return new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT place_id, name, address, content_type_id, overview, latitude, longitude FROM places WHERE ");
-        List<Object> params = new ArrayList<>();
-        for (int i = 0; i < keywords.size(); i++) {
-            if (i > 0) sql.append(" OR ");
-            sql.append("(name LIKE ? OR overview LIKE ?)");
-            params.add("%" + keywords.get(i) + "%");
-            params.add("%" + keywords.get(i) + "%");
-        }
-        sql.append(" LIMIT 5");
+    public String generateChatResponse(String userMessage) {
         try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), params.toArray());
-            List<AiPlaceDto> list = new ArrayList<>();
+            // 1. 요청 Body 생성
+            Map<String, Object> body = new HashMap<>();
+            body.put("model", modelName); // gpt-5-mini (설정 파일 값)
+
+            // 메시지 구성 (System: 역할 부여 / User: 사용자 질문)
+            List<Map<String, String>> messages = new ArrayList<>();
+
+            // (1) 시스템 프롬프트: AI의 페르소나 설정
+            Map<String, String> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", "You are a friendly and knowledgeable travel guide for Korea. Answer in Korean. Keep your answers concise and helpful.");
+            messages.add(systemMessage);
+
+            // (2) 사용자 메시지
+            Map<String, String> userMsg = new HashMap<>();
+            userMsg.put("role", "user");
+            userMsg.put("content", userMessage);
+            messages.add(userMsg);
+
+            body.put("messages", messages);
+            // body.put("temperature", 0.7); // 창의성 조절 (필요시 주석 해제)
+
+            // 2. Header 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
+            headers.set("Authorization", "Bearer " + apiKey); // GMS API Key
+
+            // 3. HTTP 요청 전송
+            HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
+            ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
+
+            // 4. 응답 파싱 (JSON -> String)
+            // 응답 구조: choices[0].message.content
+            Map map = objectMapper.readValue(response.getBody(), Map.class);
+            List choices = (List) map.get("choices");
+            Map message = (Map) ((Map) choices.get(0)).get("message");
+
+            return (String) message.get("content");
+
+        } catch (Exception e) {
+            log.error("AI 채팅 호출 실패: {}", e.getMessage());
+            return "죄송해요, 지금은 AI가 너무 바빠서 대답할 수 없어요. 잠시 후 다시 시도해 주세요. 😥";
+        }
+    }
+
+    // OpenAiService.java
+
+    /**
+     * [재추천] 사용자의 채팅 입력("카페만 보여줘")을 반영하여 다시 추천
+     */
+    public List<AiPlaceDto> refineRecommendations(String userPrompt) {
+        log.info("AI 재추천 요청: {}", userPrompt);
+
+// 1. [핵심] 사용자의 긴 문장에서 "검색용 키워드"만 추출 (GPT 이용)
+        // 예: "비오니까 실내로 추천해줘" -> "실내"
+        String keyword = extractKeyword(userPrompt);
+        log.info("AI가 추출한 검색 키워드: {}", keyword);
+
+        // 2. 후보군 조회 (DB에서 검색된 장소들을 후보군으로 변환)
+        // (실제로는 DB 검색 결과인 Map을 AiPlaceDto로 변환하는 과정이 필요하지만,
+        // 여기서는 간략히 searchDatabase 결과를 기반으로 가상의 후보군을 만든다고 가정하거나,
+        // 혹은 전체 장소에서 다시 필터링한다고 가정합니다.)
+        // ★ 편의상: DB 검색 결과에 나온 장소들을 후보군으로 사용
+        List<AiPlaceDto> candidates = convertDbResultToDto(userPrompt);
+
+        return candidates;
+    }
+
+    // ▼▼▼ [추가] 문장에서 핵심 단어(검색어)만 뽑아내는 메서드 ▼▼▼
+    private String extractKeyword(String sentence) {
+        // 2글자 이하의 짧은 단어면 굳이 AI 거치지 않고 바로 검색
+        if (sentence == null || sentence.length() < 2) return sentence;
+
+        try {
+            // [수정된 프롬프트] 추상적인 표현을 구체적인 '장소 유형'으로 변환하도록 지시
+            String prompt = "Analyze the user's travel request and convert it into a single concrete searchable place type (noun) in Korean.\n" +
+                    "Examples:\n" +
+                    "- 'It's too cold, I want to go inside' -> '카페' or '박물관' or '미술관'\n" +
+                    "- 'somewhere quiet' -> '공원' or '도서관'\n" +
+                    "- 'I want to eat something' -> '맛집'\n" +
+                    "User Request: \"" + sentence + "\"\n" +
+                    "Output ONLY the single best keyword in Korean. Do not add any explanation.";
+
+            Map<String, Object> body = new HashMap<>();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
+            headers.set("Authorization", "Bearer " + apiKey);
+
+            HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
+            ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
+
+            // 응답 파싱
+            Map map = objectMapper.readValue(response.getBody(), Map.class);
+            List choices = (List) map.get("choices");
+            Map message = (Map) ((Map) choices.get(0)).get("message");
+            String keyword = (String) message.get("content");
+
+            return keyword.trim(); // 공백 제거 후 반환
+
+        } catch (Exception e) {
+            log.error("키워드 추출 실패: {}", e.getMessage());
+            return sentence; // 에러 나면 그냥 원본 문장 사용
+        }
+    }
+
+    // (보조) 사용자 입력으로 DB를 뒤져서 후보군 DTO 리스트를 만드는 메서드
+    // (보조) 사용자 입력으로 DB를 뒤져서 후보군 DTO 리스트를 만드는 메서드
+    private List<AiPlaceDto> convertDbResultToDto(String keyword) {
+        String sql = "SELECT place_id, name, address, content_type_id, overview, latitude, longitude FROM places WHERE name LIKE ? OR overview LIKE ? LIMIT 5";
+        String param = "%" + keyword + "%";
+
+        List<AiPlaceDto> list = new ArrayList<>();
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, param, param);
             for (Map<String, Object> row : rows) {
                 AiPlaceDto dto = new AiPlaceDto();
                 dto.setId(String.valueOf(row.get("place_id")));
@@ -192,86 +326,39 @@ public class OpenAiService {
                 dto.setAddress((String) row.get("address"));
                 dto.setCategory(String.valueOf(row.get("content_type_id")));
                 dto.setOverview((String) row.get("overview"));
-                if (row.get("latitude") != null) dto.setLat(Double.parseDouble(String.valueOf(row.get("latitude"))));
-                if (row.get("longitude") != null) dto.setLng(Double.parseDouble(String.valueOf(row.get("longitude"))));
-                dto.setReason("AI DB 추천");
+
+                // [수정] NULL 체크를 추가하여 안전하게 변환
+                if (row.get("latitude") != null) {
+                    dto.setLat(Double.parseDouble(String.valueOf(row.get("latitude"))));
+                }
+                if (row.get("longitude") != null) {
+                    dto.setLng(Double.parseDouble(String.valueOf(row.get("longitude"))));
+                }
+
+                // (선택 사항) GPT 호출 실패 시에도 기본 멘트가 나오도록 설정
+                dto.setReason("키워드 '" + keyword + "' 관련 장소입니다.");
+
                 list.add(dto);
             }
-            return list;
-        } catch (Exception e) { return new ArrayList<>(); }
+        } catch (Exception e) {
+            log.error("DB 재검색 실패: {}", e.getMessage());
+            // 에러 나도 빈 리스트 반환하여 서버가 죽지 않게 함
+        }
+        return list;
     }
 
-    // (중복 제거)
-    private List<AiPlaceDto> removeDuplicates(List<AiPlaceDto> list) {
-        return list.stream().filter(distinctByKey(AiPlaceDto::getId)).collect(Collectors.toList());
-    }
-    private static <T> java.util.function.Predicate<T> distinctByKey(java.util.function.Function<? super T, ?> keyExtractor) {
-        Set<Object> seen = java.util.concurrent.ConcurrentHashMap.newKeySet();
-        return t -> seen.add(keyExtractor.apply(t));
-    }
-
-    // (프롬프트 생성)
-    private String createPrompt(List<AiPlaceDto> candidates, AiRequestDto req, String weather, String dbContext) {
+    // (보조) 재추천용 프롬프트 생성
+    private String createRefinePrompt(String userPrompt, String dbContext, List<AiPlaceDto> candidates) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Context: Weather=").append(weather).append(", Keyword=").append(req.getKeyword()).append("\n");
-        sb.append("Candidates:\n");
-        for (AiPlaceDto p : candidates) sb.append(String.format("- ID:%s, Name:%s\n", p.getId(), p.getPlaceName()));
-        sb.append("Select 3 best places. Return JSON with Korean 'reason'.");
+        sb.append("The user wants to refine the recommendations based on this request: \"").append(userPrompt).append("\"\n");
+        sb.append("Select the best places from the list below that match the request.\n\n");
+
+        sb.append("### [Candidate Places] ###\n");
+        for (AiPlaceDto p : candidates) {
+            sb.append(String.format("- ID: %s | Name: %s | Overview: %s\n", p.getId(), p.getPlaceName(), p.getOverview()));
+        }
+
+        sb.append("\nOutput format: JSON with 'recommendations' list containing 'id' and a Korean 'reason'.");
         return sb.toString();
     }
-
-    // (재추천 프롬프트)
-    private String createRefinePrompt(List<AiPlaceDto> candidates, String userRequest, String weather) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Weather: ").append(weather).append("\nUser Request: ").append(userRequest).append("\n");
-        sb.append("Candidates:\n");
-        for (AiPlaceDto p : candidates) sb.append(String.format("- ID:%s, Name:%s, Category:%s\n", p.getId(), p.getPlaceName(), p.getCategory()));
-        sb.append("Select 3 places matching request. Return JSON with Korean 'reason'.");
-        return sb.toString();
-    }
-
-    // (DB 단순 검색)
-    private String searchDatabase(String keyword) {
-        if(keyword == null) return "";
-        return "";
-    }
-
-    // (GMS 호출)
-    private List<AiPlaceDto> callGMS(String prompt, List<AiPlaceDto> candidates) {
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("model", modelName);
-            body.put("messages", List.of(Map.of("role", "system", "content", "Respond in JSON only."), Map.of("role", "user", "content", prompt)));
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
-            headers.set("Authorization", "Bearer " + apiKey);
-            HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
-            ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
-            return parseResponse(response.getBody(), candidates);
-        } catch (Exception e) { return new ArrayList<>(); }
-    }
-
-    // (JSON 파싱)
-    private List<AiPlaceDto> parseResponse(String jsonResponse, List<AiPlaceDto> candidates) {
-        try {
-            Map map = objectMapper.readValue(jsonResponse, Map.class);
-            List choices = (List) map.get("choices");
-            Map message = (Map) ((Map) choices.get(0)).get("message");
-            String content = (String) message.get("content");
-            if (content.contains("```json")) content = content.replace("```json", "").replace("```", "");
-            Map contentMap = objectMapper.readValue(content, Map.class);
-            List<Map<String, String>> recs = (List<Map<String, String>>) contentMap.get("recommendations");
-            List<AiPlaceDto> result = new ArrayList<>();
-            for (Map<String, String> r : recs) {
-                candidates.stream().filter(c -> c.getId().equals(r.get("id"))).findFirst().ifPresent(p -> {
-                    p.setReason(r.get("reason"));
-                    result.add(p);
-                });
-            }
-            return result;
-        } catch (Exception e) { return new ArrayList<>(); }
-    }
-
-    // 단순 채팅
-    public String generateChatResponse(String userMessage) { return "잠시만요"; }
 }
