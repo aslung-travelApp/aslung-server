@@ -161,7 +161,7 @@ public class OpenAiService {
     }
 
     // =================================================================================
-    // ★ 4. [핵심 수정] Logic RAG: 추상적 표현 -> 구체적 키워드 확장 -> DB 다중 검색
+    // ★ 4. Logic RAG: 추상적 표현 -> 구체적 키워드 확장 -> DB 다중 검색 (안전장치 제거)
     // =================================================================================
 
     /**
@@ -178,11 +178,10 @@ public class OpenAiService {
         List<AiPlaceDto> candidates = searchPlacesByKeywords(keywords);
         log.info("DB 검색 결과 개수: {}", candidates.size());
 
-//        // 3. [안전장치] 만약 결과가 없으면 랜덤 추천
-//        if (candidates.isEmpty()) {
-//            log.info("검색 결과 없음. 랜덤 추천 실행");
-//            return getRandomPlaces();
-//        }
+        // ★ [수정] 결과가 없으면(0건) 그냥 빈 리스트 반환 (랜덤 추천 안함)
+        if (candidates.isEmpty()) {
+            log.info("검색 결과 없음. 빈 리스트 반환.");
+        }
 
         return candidates;
     }
@@ -270,30 +269,4 @@ public class OpenAiService {
         }
         return list;
     }
-//
-//    // (4-3) [안전장치] 검색 결과 0건일 때 랜덤 추천
-//    private List<AiPlaceDto> getRandomPlaces() {
-//        String sql = "SELECT place_id, name, address, content_type_id, overview, latitude, longitude FROM places ORDER BY RAND() LIMIT 3";
-//        List<AiPlaceDto> list = new ArrayList<>();
-//        try {
-//            List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
-//            for (Map<String, Object> row : rows) {
-//                AiPlaceDto dto = new AiPlaceDto();
-//                dto.setId(String.valueOf(row.get("place_id")));
-//                dto.setPlaceName((String) row.get("name"));
-//                dto.setAddress((String) row.get("address"));
-//                dto.setCategory(String.valueOf(row.get("content_type_id")));
-//                dto.setOverview((String) row.get("overview"));
-//
-//                if (row.get("latitude") != null) dto.setLat(Double.parseDouble(String.valueOf(row.get("latitude"))));
-//                if (row.get("longitude") != null) dto.setLng(Double.parseDouble(String.valueOf(row.get("longitude"))));
-//
-//                dto.setReason("조건에 딱 맞는 곳은 없지만, 이런 곳은 어떠세요?");
-//                list.add(dto);
-//            }
-//        } catch (Exception e) {
-//            log.error("랜덤 추천 실패: {}", e.getMessage());
-//        }
-//        return list;
-//    }
 }
