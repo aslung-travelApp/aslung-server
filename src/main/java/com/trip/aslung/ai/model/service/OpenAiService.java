@@ -36,20 +36,22 @@ public class OpenAiService {
     private final KakaoService kakaoService;
 
     // =================================================================================
-    // ★ 1. 메인 추천 (초기 검색) - [수정됨] 후보군 없으면 스스로 찾아옴!
+    // ★ 1. 메인 추천 (처음 들어왔을 때)
     // =================================================================================
     public List<AiPlaceDto> getRecommendation(List<AiPlaceDto> candidates, AiRequestDto request, String weather) {
         log.info("=== AI 초기 추천 요청 ===");
-        log.info("입력 키워드: {}, 전달받은 후보군 수: {}", request.getKeyword(), (candidates != null ? candidates.size() : 0));
+        log.info("입력 키워드: {}, 위치: {}, {}", request.getKeyword(), request.getX(), request.getY());
 
-        // [핵심 수정] 전달받은 후보군이 없거나(0개) 부실하면, AI가 직접 카카오/DB를 뒤져서 채워 넣음
+        // ▼▼▼ [핵심 수정] 초기 후보군이 없으면(0개), 좌표를 이용해 카카오에서 즉시 검색해온다! ▼▼▼
         if (candidates == null || candidates.isEmpty()) {
-            log.info("🚨 초기 후보군 없음! AI가 직접 검색을 시작합니다.");
+            log.info("🚨 초기 후보군 없음! 좌표 기반 스마트 검색 시작...");
+            // 사용자의 키워드와 좌표로 검색 수행
             candidates = fetchCandidatesSmartly(request.getKeyword(), request.getX(), request.getY());
         }
 
         // 그래도 없으면 빈 리스트 반환
         if (candidates.isEmpty()) {
+            log.warn("초기 검색 결과 0건. (위치 정보 확인 필요)");
             return new ArrayList<>();
         }
 
@@ -58,6 +60,7 @@ public class OpenAiService {
             candidates = new ArrayList<>(candidates.subList(0, 15));
         }
 
+        // 초기 추천은 DB Context도 참고 (없으면 무시)
         String dbContext = searchDatabase(request.getKeyword());
         String prompt = createPrompt(candidates, request, weather, dbContext);
 
@@ -65,7 +68,7 @@ public class OpenAiService {
     }
 
     // =================================================================================
-    // ★ 2. 재추천 (채팅) - [수정됨] 로직 공통화
+    // ★ 2. 재추천 (채팅 입력 시)
     // =================================================================================
     public List<AiPlaceDto> refineRecommendations(AiRequestDto request) {
         String userPrompt = request.getMessage();
@@ -95,46 +98,50 @@ public class OpenAiService {
     }
 
     // =================================================================================
-    // ★ 3. [공통 로직] 스마트 후보군 수집 (DB + Kakao + 확장)
+    // ★ 3. [공통 로직] 스마트 후보군 수집 (위치 있으면 주변, 없으면 전국)
     // =================================================================================
     private List<AiPlaceDto> fetchCandidatesSmartly(String userInput, String x, String y) {
         List<AiPlaceDto> combinedCandidates = new ArrayList<>();
 
-        // 1. 키워드 확장 ("국밥" -> "순대국, 돼지국밥, 해장국")
+        // (1) 키워드 확장 ("국밥" -> "순대국, 돼지국밥, 해장국")
         List<String> keywords = expandToKeywords(userInput);
         log.info("🔍 확장된 검색 키워드: {}", keywords);
 
-        // 2. DB 검색 (키워드 기반)
+        // (2) DB 검색 (위치 무관하게 검색 가능)
         combinedCandidates.addAll(searchPlacesByKeywords(keywords));
 
-        // 3. 카카오 검색 (위치 정보가 있을 때만)
-        if (x != null && y != null) {
-            // (1) 1차 시도: 5km 반경
-            for (String kw : keywords) {
-                combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, x, y, 5000));
-            }
+        // (3) 카카오 검색
+        // KakaoService가 null 체크를 하므로 안심하고 호출
+        for (String kw : keywords) {
+            // 1차: 5km 반경
+            combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, x, y, 5000));
+        }
 
-            // (2) 결과 부족 시: 20km 확장
-            combinedCandidates = removeDuplicates(combinedCandidates);
-            if (combinedCandidates.size() < 3) {
-                log.info("⚠️ 결과 부족. 20km로 확장 검색...");
-                for (String kw : keywords) {
-                    combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, x, y, 20000));
-                }
+        combinedCandidates = removeDuplicates(combinedCandidates);
+
+        // 결과가 부족하고, 위치 정보가 확실히 있다면 20km로 확장
+        if (combinedCandidates.size() < 3 && x != null && y != null) {
+            log.info("⚠️ 결과 부족. 20km 반경으로 확장 검색...");
+            for (String kw : keywords) {
+                combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, x, y, 20000));
             }
-        } else {
-            // 위치 정보가 없으면 카카오 키워드 검색 (전국 단위 or 기본값) 시도
-            // (KakaoService가 null x,y를 처리한다고 가정하거나, x,y가 필수라면 스킵)
-            log.warn("위치 정보(x,y)가 없어 내 주변 검색은 스킵합니다.");
+        }
+        // 위치 정보가 아예 없어서 결과가 0개인 경우 -> 전국 단위 검색 시도
+        else if (combinedCandidates.isEmpty()) {
+            log.info("⚠️ 위치 정보 없음. 전국 단위 검색 시도...");
+            for (String kw : keywords) {
+                combinedCandidates.addAll(kakaoService.searchPlacesByKeyword(kw, null, null, 0));
+            }
         }
 
         return removeDuplicates(combinedCandidates);
     }
 
     // =================================================================================
-    // 4. 보조 메서드들 (GPT 호출, 파싱 등)
+    // 4. 보조 메서드들
     // =================================================================================
 
+    // (GPT 키워드 확장)
     private List<String> expandToKeywords(String userPrompt) {
         if (userPrompt == null || userPrompt.length() < 2) return List.of(userPrompt);
         try {
@@ -145,10 +152,7 @@ public class OpenAiService {
 
             Map<String, Object> body = new HashMap<>();
             body.put("model", modelName);
-            body.put("messages", List.of(
-                    Map.of("role", "system", "content", "You are a keyword generator."),
-                    Map.of("role", "user", "content", prompt)
-            ));
+            body.put("messages", List.of(Map.of("role", "system", "content", "Keyword generator."), Map.of("role", "user", "content", prompt)));
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
             headers.set("Authorization", "Bearer " + apiKey);
@@ -166,6 +170,7 @@ public class OpenAiService {
         } catch (Exception e) { return List.of(userPrompt); }
     }
 
+    // (DB 검색)
     private List<AiPlaceDto> searchPlacesByKeywords(List<String> keywords) {
         if (keywords.isEmpty()) return new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT place_id, name, address, content_type_id, overview, latitude, longitude FROM places WHERE ");
@@ -189,13 +194,14 @@ public class OpenAiService {
                 dto.setOverview((String) row.get("overview"));
                 if (row.get("latitude") != null) dto.setLat(Double.parseDouble(String.valueOf(row.get("latitude"))));
                 if (row.get("longitude") != null) dto.setLng(Double.parseDouble(String.valueOf(row.get("longitude"))));
-                dto.setReason("AI 추천 장소");
+                dto.setReason("AI DB 추천");
                 list.add(dto);
             }
             return list;
         } catch (Exception e) { return new ArrayList<>(); }
     }
 
+    // (중복 제거)
     private List<AiPlaceDto> removeDuplicates(List<AiPlaceDto> list) {
         return list.stream().filter(distinctByKey(AiPlaceDto::getId)).collect(Collectors.toList());
     }
@@ -204,17 +210,17 @@ public class OpenAiService {
         return t -> seen.add(keyExtractor.apply(t));
     }
 
-    // (기존 프롬프트 생성 메서드 유지)
+    // (프롬프트 생성)
     private String createPrompt(List<AiPlaceDto> candidates, AiRequestDto req, String weather, String dbContext) {
         StringBuilder sb = new StringBuilder();
-        sb.append("User Context: Weather=").append(weather).append(", Keywords=").append(req.getKeyword()).append("\n");
+        sb.append("Context: Weather=").append(weather).append(", Keyword=").append(req.getKeyword()).append("\n");
         sb.append("Candidates:\n");
         for (AiPlaceDto p : candidates) sb.append(String.format("- ID:%s, Name:%s\n", p.getId(), p.getPlaceName()));
         sb.append("Select 3 best places. Return JSON with Korean 'reason'.");
         return sb.toString();
     }
 
-    // (재추천용 프롬프트 생성)
+    // (재추천 프롬프트)
     private String createRefinePrompt(List<AiPlaceDto> candidates, String userRequest, String weather) {
         StringBuilder sb = new StringBuilder();
         sb.append("Weather: ").append(weather).append("\nUser Request: ").append(userRequest).append("\n");
@@ -224,14 +230,13 @@ public class OpenAiService {
         return sb.toString();
     }
 
-    // (DB 단순 검색 - 유지)
+    // (DB 단순 검색)
     private String searchDatabase(String keyword) {
         if(keyword == null) return "";
-        // (내용 생략 - 기존과 동일)
         return "";
     }
 
-    // (GMS 호출 - 유지)
+    // (GMS 호출)
     private List<AiPlaceDto> callGMS(String prompt, List<AiPlaceDto> candidates) {
         try {
             Map<String, Object> body = new HashMap<>();
@@ -246,7 +251,7 @@ public class OpenAiService {
         } catch (Exception e) { return new ArrayList<>(); }
     }
 
-    // (파싱 - 유지)
+    // (JSON 파싱)
     private List<AiPlaceDto> parseResponse(String jsonResponse, List<AiPlaceDto> candidates) {
         try {
             Map map = objectMapper.readValue(jsonResponse, Map.class);
@@ -267,6 +272,6 @@ public class OpenAiService {
         } catch (Exception e) { return new ArrayList<>(); }
     }
 
-    // 단순 채팅 (유지)
+    // 단순 채팅
     public String generateChatResponse(String userMessage) { return "잠시만요"; }
 }
