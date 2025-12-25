@@ -22,38 +22,42 @@ public class KakaoService {
     private String kakaoApiKey;
     private final RestTemplate restTemplate;
 
-    /**
-     * [기존] 카테고리 코드로 검색 (음식점 FD6 등)
-     */
+    // 1. 카테고리 검색 (기존 유지)
     public List<AiPlaceDto> searchCandidates(String x, String y, String categoryCode) {
         String url = "https://dapi.kakao.com/v2/local/search/category.json";
         return callKakaoApi(url, x, y, categoryCode, null, 2000);
     }
 
-    /**
-     * [추가] 키워드로 검색 (예: "박물관", "실내", "카페")
-     * Logic RAG에서 확장된 키워드를 여기로 보냅니다.
-     */
+    // 2. 키워드 검색 (기존 유지)
     public List<AiPlaceDto> searchPlacesByKeyword(String keyword, String x, String y, int radius) {
         String url = "https://dapi.kakao.com/v2/local/search/keyword.json";
-        // 키워드 검색은 query 파라미터가 필수입니다.
         return callKakaoApi(url, x, y, null, keyword, radius);
     }
 
-    // 공통 API 호출 로직 분리
+    // ★ [핵심 수정] 파라미터가 유효할 때만 붙이도록 로직 개선
     private List<AiPlaceDto> callKakaoApi(String url, String x, String y, String categoryCode, String keyword, int radius) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "KakaoAK " + kakaoApiKey);
 
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
-                .queryParam("x", x)
-                .queryParam("y", y)
-                .queryParam("radius", radius)
-                .queryParam("sort", "distance") // 거리순
-                .queryParam("size", 15);
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
 
+        // 필수 파라미터 (키워드 or 카테고리)
         if (categoryCode != null) builder.queryParam("category_group_code", categoryCode);
         if (keyword != null) builder.queryParam("query", keyword);
+
+        // ▼▼▼ 여기가 문제였음! 조건부로 붙여야 함 ▼▼▼
+        if (isValidCoordinate(x) && isValidCoordinate(y)) {
+            // 좌표가 정상이면 -> 거리순(distance) + 반경(radius) 검색
+            builder.queryParam("x", x);
+            builder.queryParam("y", y);
+            builder.queryParam("radius", radius > 0 ? radius : 20000); // 반경 없으면 20km 기본
+            builder.queryParam("sort", "distance");
+        } else {
+            // 좌표가 없거나 이상하면 -> 정확도순(accuracy) 전국 검색 (에러 방지!)
+            builder.queryParam("sort", "accuracy");
+        }
+
+        builder.queryParam("size", 15);
 
         try {
             HttpEntity<?> entity = new HttpEntity<>(headers);
@@ -62,9 +66,14 @@ public class KakaoService {
             );
             return parseResponse(response.getBody());
         } catch (Exception e) {
-            log.error("카카오 API 호출 실패: {}", e.getMessage());
+            log.error("카카오 API 호출 실패 (url={}): {}", builder.toUriString(), e.getMessage());
             return new ArrayList<>();
         }
+    }
+
+    // 좌표값 유효성 검사 (null, empty, "null" 문자열 체크)
+    private boolean isValidCoordinate(String coord) {
+        return coord != null && !coord.isEmpty() && !coord.equals("null");
     }
 
     private List<AiPlaceDto> parseResponse(Map body) {
@@ -78,14 +87,13 @@ public class KakaoService {
                 address = (String) doc.get("address_name");
             }
 
-            // 좌표가 String으로 오므로 DTO 변환 시 주의 (OpenAiService에서 Double 변환 예정)
             list.add(AiPlaceDto.builder()
                     .id((String) doc.get("id"))
                     .placeName((String) doc.get("place_name"))
                     .category((String) doc.get("category_name"))
                     .address(address)
-                    .x((String) doc.get("x")) // 경도
-                    .y((String) doc.get("y")) // 위도
+                    .x((String) doc.get("x"))
+                    .y((String) doc.get("y"))
                     .placeUrl((String) doc.get("place_url"))
                     .build());
         }
